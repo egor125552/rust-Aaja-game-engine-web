@@ -46,8 +46,12 @@ jobs:
       - name: Install wasm-pack
         run: cargo install wasm-pack --locked --version 0.15.0
 
-      - name: Rust formatting
-        run: npm run format:rust
+      - name: Apply Rust formatting and capture patch
+        shell: bash
+        run: |
+          cargo fmt --all
+          git diff -- crates/core > rustfmt.patch
+          cat rustfmt.patch
 
       - name: Rust lint
         run: npm run lint:rust
@@ -79,6 +83,7 @@ jobs:
         with:
           name: aaja-audio-demo-${{ github.run_attempt }}
           path: |
+            rustfmt.patch
             demo/dist
             packages/engine/dist
             playwright-report
