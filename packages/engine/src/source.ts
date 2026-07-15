@@ -313,6 +313,9 @@ export class BufferSoundHandle extends BaseSoundHandle {
     if (this.isDisposed) throw new Error(`Sound source ${this.id} has been disposed`);
     if (this.state === "playing") return;
     await this.host.resume();
+    // A pending browser unlock may settle after the source was cancelled.
+    // Treat disposal during resume as a clean cancellation, not a late start.
+    if (this.isDisposed) return;
     const targetVolume = this.currentVolume;
     if (this.#fadeInMs > 0) this.rampOutput(0, 0);
     this.#startNode(this.#offset);
@@ -474,6 +477,8 @@ export class StreamSoundHandle extends BaseSoundHandle {
     const element = this.#element;
     if (!element) throw new Error(`Streaming backend for ${this.id} is unavailable`);
     await this.host.resume();
+    // A pending browser unlock may settle after the source was cancelled.
+    if (this.isDisposed) return;
     const targetVolume = this.currentVolume;
     if (this.#fadeInMs > 0) this.rampOutput(0, 0);
     try {
