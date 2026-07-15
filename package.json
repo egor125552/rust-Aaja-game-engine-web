@@ -1,0 +1,35 @@
+{
+  "name": "rust-aaja-game-engine-web-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "demo"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build:wasm": "wasm-pack build crates/core --target web --release --out-dir ../../packages/engine/wasm-pkg --out-name audio_game_core",
+    "build:engine:ts": "tsc -p packages/engine/tsconfig.json",
+    "build:engine": "npm run build:engine:ts && node scripts/copy-wasm.mjs",
+    "build:demo": "node scripts/copy-demo.mjs",
+    "build": "npm run clean && npm run build:wasm && npm run build:engine && npm run build:demo",
+    "typecheck": "tsc -p packages/engine/tsconfig.json --noEmit",
+    "test:rust": "cargo test --workspace",
+    "test:ts": "npm run build:engine:ts && node --test tests/*.test.mjs",
+    "test": "npm run test:rust && npm run test:ts",
+    "format:rust": "cargo fmt --all -- --check",
+    "lint:rust": "cargo clippy --workspace --all-targets -- -D warnings",
+    "check": "npm run format:rust && npm run lint:rust && npm run test && npm run build && npm run typecheck",
+    "serve": "python3 -m http.server 4173 -d demo/dist",
+    "test:e2e": "playwright test",
+    "test:wasm": "node scripts/verify-wasm.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "typescript": "^5.8.3"
+  }
+}
