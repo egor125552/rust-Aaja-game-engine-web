@@ -1,4 +1,4 @@
-name: Compare public listening lab mirrors in WebKit
+name: Verify official GitHub Pages listening lab
 
 on:
   pull_request:
@@ -8,13 +8,15 @@ permissions:
   contents: read
 
 concurrency:
-  group: "public-site-webkit"
+  group: "pages-live-webkit"
   cancel-in-progress: true
 
 jobs:
-  webkit-public-url:
+  verify-pages:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      PUBLIC_URL: https://egor125552.github.io/rust-Aaja-game-engine-web/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,84 +30,64 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Wait for published HTML, modules and WASM
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${PUBLIC_URL%/}"
+          for attempt in {1..60}; do
+            echo "Pages probe $attempt"
+            if html="$(curl --fail --silent --show-error --location --max-time 20 "$PUBLIC_URL" 2>/dev/null)" && grep -q "Aaja Audio Game Engine" <<<"$html"; then
+              curl --fail --silent --show-error --location --max-time 20 "$base/src/feature-tour-ui.js" -o feature-tour-ui.js
+              curl --fail --silent --show-error --location --max-time 20 "$base/engine/index.js" -o engine.js
+              curl --fail --silent --show-error --location --max-time 20 "$base/engine/wasm/audio_game_core_bg.wasm" -o core.wasm
+              test -s feature-tour-ui.js
+              test -s engine.js
+              test "$(od -An -tx1 -N4 core.wasm | tr -d ' \n')" = "0061736d"
+              echo "GitHub Pages resources are live."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "GitHub Pages did not become reachable: $PUBLIC_URL"
+          exit 1
+
       - name: Install WebKit runtime
         run: npx playwright install --with-deps webkit
 
-      - name: Probe mirrors in WebKit
+      - name: Open live page and initialize Rust/WASM in WebKit
         shell: bash
         run: |
-          set +e
-          node --input-type=module >mirror-webkit.log 2>&1 <<'JS'
+          node --input-type=module <<'JS'
           import { webkit } from '@playwright/test';
 
-          const urls = [
-            'https://rawcdn.githack.com/egor125552/rust-Aaja-game-engine-web/10f06a7301a14cae592e9c16c483397f1fc47d68/index.html',
-            'https://raw.githack.com/egor125552/rust-Aaja-game-engine-web/public-site/index.html',
-            'https://cdn.jsdelivr.net/gh/egor125552/rust-Aaja-game-engine-web@10f06a7301a14cae592e9c16c483397f1fc47d68/index.html',
-          ];
-
           const browser = await webkit.launch();
-          let winner = null;
+          const page = await browser.newPage();
+          const errors = [];
+          page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
+          page.on('console', message => {
+            if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+          });
+          page.on('requestfailed', request => errors.push(`request: ${request.url()} — ${request.failure()?.errorText ?? 'failed'}`));
+
           try {
-            for (const url of urls) {
-              const page = await browser.newPage();
-              const events = [];
-              page.on('pageerror', error => events.push(`pageerror: ${error.message}`));
-              page.on('console', message => events.push(`console.${message.type()}: ${message.text()}`));
-              page.on('requestfailed', request => events.push(`requestfailed: ${request.url()} — ${request.failure()?.errorText ?? 'failed'}`));
-              try {
-                const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-                await page.waitForTimeout(3000);
-                const title = await page.title();
-                const body = (await page.locator('body').innerText().catch(() => '')).slice(0, 1000);
-                const headingCount = await page.getByRole('heading', { name: 'Aaja Audio Game Engine', exact: true }).count();
-                console.log('--- URL', url);
-                console.log('final URL:', page.url());
-                console.log('status:', response?.status());
-                console.log('content-type:', response?.headers()['content-type']);
-                console.log('title:', JSON.stringify(title));
-                console.log('heading count:', headingCount);
-                console.log('body:', JSON.stringify(body));
-                console.log(events.join('\n'));
-                if (response?.ok() && headingCount === 1) {
-                  winner = url;
-                  await page.close();
-                  break;
-                }
-              } catch (error) {
-                console.log('--- URL', url);
-                console.log('probe error:', error instanceof Error ? error.stack : String(error));
-                console.log(events.join('\n'));
-              }
-              await page.close();
-            }
+            const response = await page.goto(process.env.PUBLIC_URL, { waitUntil: 'networkidle', timeout: 60_000 });
+            if (!response?.ok()) throw new Error(`Navigation failed: ${response?.status()}`);
+            await page.getByRole('heading', { name: 'Aaja Audio Game Engine', exact: true }).waitFor();
+            await page.getByRole('button', { name: 'Включить звук' }).click();
+            await page.waitForFunction(() => {
+              const value = document.querySelector('#core-version')?.textContent?.trim();
+              return Boolean(value && value !== 'не загружено');
+            }, undefined, { timeout: 30_000 });
+            const core = await page.locator('#core-version').innerText();
+            const context = await page.locator('#context-state').innerText();
+            const status = await page.locator('#status').innerText();
+            console.log(`LIVE_URL=${process.env.PUBLIC_URL}`);
+            console.log(`CORE_VERSION=${core}`);
+            console.log(`AUDIO_CONTEXT=${context}`);
+            console.log(`STATUS=${status}`);
+            if (errors.length) throw new Error(errors.join('\n'));
           } finally {
             await browser.close();
           }
-          if (!winner) throw new Error('No mirror rendered the listening lab in WebKit');
-          console.log(`WORKING_WEBKIT_URL=${winner}`);
           JS
-          status=$?
-          printf '%s\n' "$status" > mirror-webkit.status
-          cat mirror-webkit.log
-          exit 0
-
-      - name: Upload mirror diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mirror-webkit-diagnostics
-          path: |
-            mirror-webkit.log
-            mirror-webkit.status
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Require a rendered mirror
-        shell: bash
-        run: |
-          status="$(cat mirror-webkit.status)"
-          if [[ "$status" != "0" ]]; then
-            cat mirror-webkit.log
-            exit "$status"
-          fi
