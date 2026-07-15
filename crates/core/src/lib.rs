@@ -69,13 +69,7 @@ impl CoreEngine {
     }
 
     #[wasm_bindgen(js_name = setSourcePosition)]
-    pub fn set_source_position(
-        &mut self,
-        id: &str,
-        x: f32,
-        y: f32,
-        z: f32,
-    ) -> Result<(), JsValue> {
+    pub fn set_source_position(&mut self, id: &str, x: f32, y: f32, z: f32) -> Result<(), JsValue> {
         self.scene
             .set_source_position(id, Vec3::new(x, y, z).map_err(js_error)?)
             .map_err(js_error)
@@ -135,7 +129,9 @@ impl CoreEngine {
 
     #[wasm_bindgen(js_name = normalizeRoomPresetJson)]
     pub fn normalize_room_preset_json(&self, json: &str) -> Result<String, JsValue> {
-        let preset = parse_json::<RoomPresetV1>(json)?.normalize().map_err(js_error)?;
+        let preset = parse_json::<RoomPresetV1>(json)?
+            .normalize()
+            .map_err(js_error)?;
         to_json(&preset)
     }
 }

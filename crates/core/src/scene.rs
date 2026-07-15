@@ -141,8 +141,8 @@ impl Scene {
 
     fn audibility(&self, source: &SourceState) -> f32 {
         let distance = self.listener.distance(source.position);
-        let distance_gain = attenuation(distance, DistanceModel::Inverse, 1.0, 100.0, 1.0)
-            .unwrap_or(0.0);
+        let distance_gain =
+            attenuation(distance, DistanceModel::Inverse, 1.0, 100.0, 1.0).unwrap_or(0.0);
         source.volume * distance_gain
     }
 }
