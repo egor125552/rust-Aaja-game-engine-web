@@ -22,6 +22,17 @@ test("WASM demo starts, keeps focus, and exposes critical keyboard actions", asy
   await expect(front).toBeFocused();
   await expect(page.locator("#status")).toContainText("спереди");
 
+  const levelSelect = page.getByLabel("Уровень проверки");
+  await levelSelect.selectOption("1");
+  const runLevel = page.getByRole("button", { name: "Запустить выбранный уровень — T" });
+  await runLevel.focus();
+  await runLevel.click();
+  await expect(runLevel).toBeFocused();
+  await expect(page.locator("#status")).toContainText("Уровень 1");
+  await expect(page.locator("#tour-progress")).toHaveAttribute("max", "6");
+  await page.getByRole("button", { name: "Остановить сценарий — X" }).click();
+  await expect(page.locator("#status")).toContainText("остановлен");
+
   await page.keyboard.press("h");
   await expect(page.locator("#quality-value")).toContainText("equal-power");
   await page.keyboard.press("Escape");

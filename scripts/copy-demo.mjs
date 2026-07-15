@@ -7,8 +7,8 @@ for (const required of [
   await stat(required);
 }
 
-await mkdir("demo/dist/src", { recursive: true });
+await mkdir("demo/dist", { recursive: true });
 await cp("demo/index.html", "demo/dist/index.html");
 await cp("demo/styles.css", "demo/dist/styles.css");
-await cp("demo/src/main.js", "demo/dist/src/main.js");
+await cp("demo/src", "demo/dist/src", { recursive: true });
 await cp("packages/engine/dist", "demo/dist/engine", { recursive: true });

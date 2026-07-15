@@ -20,11 +20,47 @@
         1–4 — слева, спереди, справа и сзади; R — последовательность направлений;
         A — приближение; B — маяк; C — помещение; O — заглушение; H — качество;
         D — ducking; M — несколько источников; L — загрузка WAV; W, S — движение
-        слушателя; Q, E — поворот; Escape — аварийная остановка.
+        слушателя; Q, E — поворот. T — выбранный уровень; P — повтор; G — все уровни;
+        X — остановить сценарий; Escape — аварийная остановка всех звуков.
       </p>
     </details>
 
     <button id="enable" class="primary" aria-keyshortcuts="Enter">Включить звук</button>
+
+    <section id="feature-tour" aria-labelledby="tour-title" aria-busy="false">
+      <h2 id="tour-title">Пошаговая проверка всех функций</h2>
+      <p>
+        Выбери отдельный уровень или полный прогон. Каждый уровень использует один и тот же
+        локально сгенерированный WAV-earcon, поэтому различия создаёт именно движок, а не разные записи.
+        Рецепт звука основан на принципах открытого набора BeepBank-500, где аудио опубликовано как CC0.
+      </p>
+      <p>
+        <label for="tour-level">Уровень проверки</label>
+        <select id="tour-level">
+          <option value="1">1. Файл и жизненный цикл</option>
+          <option value="2">2. Направления и движение</option>
+          <option value="3">3. Расстояние и качество</option>
+          <option value="4">4. Все помещения и реверберация</option>
+          <option value="5">5. Заглушение и отражения</option>
+          <option value="6">6. Микшер, ducking и лимиты</option>
+          <option value="7">7. Пресеты, мастер и очистка</option>
+          <option value="8">8. Параллельная игровая сцена</option>
+          <option value="all">Все восемь уровней</option>
+        </select>
+      </p>
+      <p id="tour-description">Выбери уровень проверки.</p>
+      <div class="controls">
+        <button id="tour-run" class="primary" aria-keyshortcuts="T">Запустить выбранный уровень — T</button>
+        <button id="tour-repeat" aria-keyshortcuts="P">Повторить последний — P</button>
+        <button id="tour-all" aria-keyshortcuts="G">Пройти все уровни — G</button>
+        <button id="tour-stop" class="danger-inline" aria-keyshortcuts="X">Остановить сценарий — X</button>
+      </div>
+      <p>
+        <label id="tour-progress-label" for="tour-progress">Прогресс текущего уровня</label>
+        <progress id="tour-progress" max="1" value="0"></progress>
+      </p>
+      <p id="tour-step">Сценарий ещё не запущен.</p>
+    </section>
 
     <section aria-labelledby="directions-title">
       <h2 id="directions-title">Пространственные сценарии</h2>
@@ -85,5 +121,6 @@
     {"imports":{"@aaja/audio-game-engine":"./engine/index.js"}}
   </script>
   <script type="module" src="src/main.js"></script>
+  <script type="module" src="src/feature-tour-ui.js"></script>
 </body>
 </html>
