@@ -8,6 +8,7 @@ Status legend: `[x]` implemented and verified in the available environment, `[~]
 - This container has no Rust toolchain and cannot download one, so native Rust and generated WASM checks must run in GitHub Actions.
 - Local Chromium navigation to `localhost` and `file://` is blocked by an administrator policy (`ERR_BLOCKED_BY_ADMINISTRATOR`), so browser execution must run in GitHub Actions or on user hardware.
 - A physical iPhone and VoiceOver are not available; a precise manual script is included.
+- The `validation-rust-wasm` pull request is the reproducible external gate for Rust/WASM and cross-browser verification.
 
 ## Phase 0 — research and skeleton
 
