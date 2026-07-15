@@ -22,7 +22,16 @@ import type {
   ToneOptions,
   Vec3,
 } from "./types.js";
-import { automate, clamp, clamp01, createId, normalizeDirection, sanitizeVec3 } from "./utils.js";
+import {
+  automate,
+  clamp,
+  clamp01,
+  createId,
+  normalizeDirection,
+  sanitizeVec3,
+  setListenerOrientationParams,
+  setListenerPositionParams,
+} from "./utils.js";
 import { CoreBridge } from "./wasm-bridge.js";
 
 const normalizeQuality = (quality: SpatialQuality | undefined): SpatialQuality => {
@@ -43,6 +52,25 @@ const normalizeAssetUrl = (url: string): string => {
     throw new TypeError("Audio asset URL must be a non-empty string");
   }
   return url.trim();
+};
+
+type ResumeAttempt =
+  | { kind: "resolved" }
+  | { kind: "rejected"; error: unknown }
+  | { kind: "timeout" };
+
+const resumeContext = async (context: AudioContext, timeoutMs = 1_000): Promise<ResumeAttempt> => {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timer = new Promise<ResumeAttempt>((resolve) => {
+    timeout = setTimeout(() => resolve({ kind: "timeout" }), timeoutMs);
+  });
+  const attempt = context.resume().then<ResumeAttempt, ResumeAttempt>(
+    () => ({ kind: "resolved" }),
+    (error: unknown) => ({ kind: "rejected", error }),
+  );
+  const result = await Promise.race([attempt, timer]);
+  if (timeout !== undefined) clearTimeout(timeout);
+  return result;
 };
 
 export class AudioGameEngine extends EventTarget {
@@ -206,13 +234,17 @@ export class AudioGameEngine extends EventTarget {
   async resume(): Promise<void> {
     if (this.#closed) throw new Error("Audio game engine is closed");
     if (this.#context.state === "suspended" || (this.#context.state as string) === "interrupted") {
-      try {
-        await this.#context.resume();
-      } catch (error) {
+      const result = await resumeContext(this.#context);
+      if (result.kind === "timeout") {
+        this.diagnostics.warning(
+          "context.resume.timeout",
+          "AudioContext resume did not settle; the engine remains usable and will retry after another user gesture",
+        );
+      } else if (result.kind === "rejected") {
         this.diagnostics.warning(
           "context.resume.failed",
           "Audio could not resume before a user gesture",
-          { reason: error instanceof Error ? error.message : String(error) },
+          { reason: result.error instanceof Error ? result.error.message : String(result.error) },
         );
       }
     }
@@ -292,10 +324,7 @@ export class AudioGameEngine extends EventTarget {
     this.#assertOpen();
     const next = sanitizeVec3(position, this.#listenerPosition);
     this.#listenerPosition = next;
-    const listener = this.#context.listener;
-    automate(listener.positionX, next[0], this.#context, rampMs);
-    automate(listener.positionY, next[1], this.#context, rampMs);
-    automate(listener.positionZ, next[2], this.#context, rampMs);
+    setListenerPositionParams(this.#context.listener, next, this.#context, rampMs);
     this.#core.setListenerPosition(next);
   }
 
@@ -311,13 +340,7 @@ export class AudioGameEngine extends EventTarget {
     if (alignment > 0.999) {
       safeUp = Math.abs(safeForward[1]) > 0.999 ? [0, 0, 1] : [0, 1, 0];
     }
-    const listener = this.#context.listener;
-    automate(listener.forwardX, safeForward[0], this.#context, rampMs);
-    automate(listener.forwardY, safeForward[1], this.#context, rampMs);
-    automate(listener.forwardZ, safeForward[2], this.#context, rampMs);
-    automate(listener.upX, safeUp[0], this.#context, rampMs);
-    automate(listener.upY, safeUp[1], this.#context, rampMs);
-    automate(listener.upZ, safeUp[2], this.#context, rampMs);
+    setListenerOrientationParams(this.#context.listener, safeForward, safeUp, this.#context, rampMs);
   }
 
   setRoom(room: BuiltInRoom, rampMs = 120): RoomPresetV1 {
