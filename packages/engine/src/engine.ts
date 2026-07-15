@@ -135,6 +135,7 @@ export class AudioGameEngine extends EventTarget {
       mixer: this.#mixer,
       diagnostics: this.diagnostics,
       get quality() { return engine.#quality; },
+      resume: () => this.resume(),
       sourceStarted: (source) => this.#sourceStarted(source),
       sourceStopped: (source) => this.#sourceStopped(source),
       sourceDisposed: (source) => this.#sourceDisposed(source),
