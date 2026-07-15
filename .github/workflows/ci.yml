@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Expand the initial repository payload
+        id: bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          chunks=(bootstrap/chunk-*)
+          expanded=false
+          if (( ${#chunks[@]} > 0 )); then
+            cat "${chunks[@]}" | base64 --decode > "$RUNNER_TEMP/aaja-project.tar.gz"
+            tar -xzf "$RUNNER_TEMP/aaja-project.tar.gz" -C .
+            rm -rf bootstrap
+            expanded=true
+          fi
+          project=false
+          if [[ -f package.json && -f Cargo.toml ]]; then
+            project=true
+          fi
+          echo "expanded=$expanded" >> "$GITHUB_OUTPUT"
+          echo "project=$project" >> "$GITHUB_OUTPUT"
+
+      - name: Repository bootstrap is ready
+        if: steps.bootstrap.outputs.project != 'true'
+        run: echo "No buildable project tree is present on this ref yet."
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.bootstrap.outputs.project == 'true'
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - uses: actions/setup-node@v4
+        if: steps.bootstrap.outputs.project == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        if: steps.bootstrap.outputs.project == 'true'
+        run: npm ci
+
+      - name: Install wasm-pack
+        if: steps.bootstrap.outputs.project == 'true'
+        run: cargo install wasm-pack --locked
+
+      - name: Rust formatting
+        if: steps.bootstrap.outputs.project == 'true'
+        run: npm run format:rust
+
+      - name: Rust lint
+        if: steps.bootstrap.outputs.project == 'true'
+        run: npm run lint:rust
+
+      - name: Unit tests
+        if: steps.bootstrap.outputs.project == 'true'
+        run: npm test
+
+      - name: Production build
+        if: steps.bootstrap.outputs.project == 'true'
+        run: npm run build
+
+      - name: Verify generated WASM
+        if: steps.bootstrap.outputs.project == 'true'
+        run: |
+          test -s packages/engine/dist/wasm/audio_game_core_bg.wasm
+          npm run test:wasm
+
+      - name: Install browser runtimes
+        if: steps.bootstrap.outputs.project == 'true'
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Browser smoke tests
+        if: steps.bootstrap.outputs.project == 'true'
+        run: npm run test:e2e
+
+      - name: Commit the verified project tree
+        if: steps.bootstrap.outputs.expanded == 'true' && github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Build accessible Rust WASM audio engine"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.bootstrap.outputs.project == 'true'
+        with:
+          name: aaja-audio-demo-${{ github.run_attempt }}
+          path: |
+            demo/dist
+            packages/engine/dist
+            playwright-report
+          if-no-files-found: warn
