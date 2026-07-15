@@ -29,6 +29,12 @@ beacon.moveTo([0, 0, -2], 1_500);
 - Category mixer, per-category limits, deterministic priority/distance-aware voice eviction, and speech ducking that leaves danger cues untouched.
 - Keyboard and screen-reader accessible listening lab with no canvas-only controls.
 
+## Full listening tour
+
+The demo now includes an eight-level scripted tour. Choose one level, repeat the last level, or run all levels. The tour exercises cached WAV lifecycle, spatial directions, movement, distance models, every built-in room, reverb, occlusion, categories, ducking, voice limits, custom presets, cleanup, and a parallel game scene. It uses a deterministic locally generated 48 kHz WAV so every comparison uses the same source sound and works without network access.
+
+Keyboard shortcuts: `T` runs the selected level, `P` repeats, `G` runs all eight levels, `X` stops the tour, and `Escape` stops all audio. See `docs/manual-tests/full-feature-tour.md` for expected results.
+
 ## Prerequisites
 
 - Node.js 20 or newer.

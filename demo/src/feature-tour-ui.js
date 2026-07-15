@@ -32,10 +32,16 @@ function announce(message) {
 }
 
 async function requireEngine() {
-  engine = await AudioGameEngine.start({ quality: "hrtf", maxVoices: 24, autoRecover: true });
-  engine.addEventListener("sourcestart", refreshSharedState);
-  engine.addEventListener("sourcestop", refreshSharedState);
-  engine.addEventListener("statechange", refreshSharedState);
+  const next = await AudioGameEngine.start({ quality: "hrtf", maxVoices: 24, autoRecover: true });
+  if (engine !== next) {
+    engine?.removeEventListener("sourcestart", refreshSharedState);
+    engine?.removeEventListener("sourcestop", refreshSharedState);
+    engine?.removeEventListener("statechange", refreshSharedState);
+    engine = next;
+    engine.addEventListener("sourcestart", refreshSharedState);
+    engine.addEventListener("sourcestop", refreshSharedState);
+    engine.addEventListener("statechange", refreshSharedState);
+  }
   refreshSharedState();
   return engine;
 }
@@ -89,6 +95,7 @@ byId("tour-run").addEventListener("click", () => run(runSelected));
 byId("tour-repeat").addEventListener("click", () => run(tour.repeat));
 byId("tour-all").addEventListener("click", () => run(runAll));
 byId("tour-stop").addEventListener("click", () => run(() => tour.stop()));
+byId("stop").addEventListener("click", () => run(() => tour.stop("Все звуки аварийно остановлены.")));
 
 document.addEventListener("keydown", (event) => {
   if (event.repeat || event.ctrlKey || event.altKey || event.metaKey) return;
@@ -102,7 +109,7 @@ document.addEventListener("keydown", (event) => {
     p: tour.repeat,
     g: runAll,
     x: () => tour.stop(),
-    Escape: () => tour.stop("Сценарный прогон остановлен аварийной клавишей."),
+    Escape: () => tour.stop("Все звуки аварийно остановлены."),
   };
   const action = actions[key];
   if (!action) return;

@@ -11,3 +11,4 @@
 - Fixed Firefox startup hangs by beginning resume during the user gesture and bounding unresolved `AudioContext.resume()` attempts.
 - Added modern AudioParam and legacy `setPosition()`/`setOrientation()` compatibility for listener and source spatial controls.
 - Verified a clean optimized WASM build, JS/WASM contract, formatter, Clippy, focused tests, and automated demo smoke checks in Chromium, Firefox, and WebKit.
+- Added an accessible eight-level full-feature listening tour with a deterministic local WAV, all room presets, parallel feature exercise, repeat/stop controls, and focused automated coverage.
