@@ -79,3 +79,30 @@ dd {
     grid-template-columns: 1fr;
   }
 }
+
+select {
+  min-height: 2.75rem;
+  max-width: 100%;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+}
+
+select:focus-visible,
+progress:focus-visible {
+  outline: 0.25rem solid Highlight;
+  outline-offset: 0.2rem;
+}
+
+progress {
+  width: min(100%, 32rem);
+  height: 1.25rem;
+  vertical-align: middle;
+}
+
+.danger-inline {
+  font-weight: 700;
+}
+
+#tour-step {
+  min-height: 2.5rem;
+}
