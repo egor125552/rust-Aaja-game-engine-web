@@ -46,8 +46,11 @@ jobs:
       - name: Install wasm-pack
         run: cargo install wasm-pack --locked --version 0.15.0
 
-      - name: Rust formatting
-        run: npm run format:rust
+      - name: Format Rust working tree and capture patch
+        shell: bash
+        run: |
+          cargo fmt --all
+          git diff -- crates/core > rustfmt.patch
 
       - name: Rust lint
         run: npm run lint:rust
@@ -74,6 +77,16 @@ jobs:
       - name: Browser smoke tests
         run: npm run test:e2e
 
+      - name: Require committed Rust formatting
+        if: always()
+        shell: bash
+        run: |
+          if [[ -s rustfmt.patch ]]; then
+            cat rustfmt.patch
+            echo "Rust formatter changed tracked files. Apply rustfmt.patch and rerun CI."
+            exit 1
+          fi
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -83,5 +96,6 @@ jobs:
             packages/engine/dist
             playwright-report
             test-results
+            rustfmt.patch
           if-no-files-found: warn
           retention-days: 7
