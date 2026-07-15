@@ -22,7 +22,16 @@ import type {
   ToneOptions,
   Vec3,
 } from "./types.js";
-import { automate, clamp, clamp01, createId, normalizeDirection, sanitizeVec3 } from "./utils.js";
+import {
+  automate,
+  clamp,
+  clamp01,
+  createId,
+  normalizeDirection,
+  sanitizeVec3,
+  setListenerOrientationParams,
+  setListenerPositionParams,
+} from "./utils.js";
 import { CoreBridge } from "./wasm-bridge.js";
 
 const normalizeQuality = (quality: SpatialQuality | undefined): SpatialQuality => {
@@ -322,10 +331,7 @@ export class AudioGameEngine extends EventTarget {
     this.#assertOpen();
     const next = sanitizeVec3(position, this.#listenerPosition);
     this.#listenerPosition = next;
-    const listener = this.#context.listener;
-    automate(listener.positionX, next[0], this.#context, rampMs);
-    automate(listener.positionY, next[1], this.#context, rampMs);
-    automate(listener.positionZ, next[2], this.#context, rampMs);
+    setListenerPositionParams(this.#context.listener, next, this.#context, rampMs);
     this.#core.setListenerPosition(next);
   }
 
@@ -341,13 +347,13 @@ export class AudioGameEngine extends EventTarget {
     if (alignment > 0.999) {
       safeUp = Math.abs(safeForward[1]) > 0.999 ? [0, 0, 1] : [0, 1, 0];
     }
-    const listener = this.#context.listener;
-    automate(listener.forwardX, safeForward[0], this.#context, rampMs);
-    automate(listener.forwardY, safeForward[1], this.#context, rampMs);
-    automate(listener.forwardZ, safeForward[2], this.#context, rampMs);
-    automate(listener.upX, safeUp[0], this.#context, rampMs);
-    automate(listener.upY, safeUp[1], this.#context, rampMs);
-    automate(listener.upZ, safeUp[2], this.#context, rampMs);
+    setListenerOrientationParams(
+      this.#context.listener,
+      safeForward,
+      safeUp,
+      this.#context,
+      rampMs,
+    );
   }
 
   setRoom(room: BuiltInRoom, rampMs = 120): RoomPresetV1 {
