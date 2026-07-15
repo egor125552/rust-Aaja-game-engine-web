@@ -16,6 +16,16 @@ const stepText = byId("tour-step");
 const section = byId("feature-tour");
 let engine;
 
+const categoryDefaults = Object.freeze({
+  ui: { volume: 1, muted: false, priority: 80, maxVoices: 8 },
+  speech: { volume: 1, muted: false, priority: 90, maxVoices: 4 },
+  music: { volume: 0.8, muted: false, priority: 20, maxVoices: 2 },
+  environment: { volume: 0.85, muted: false, priority: 30, maxVoices: 12 },
+  footsteps: { volume: 1, muted: false, priority: 55, maxVoices: 8 },
+  mechanisms: { volume: 0.9, muted: false, priority: 50, maxVoices: 10 },
+  danger: { volume: 1, muted: false, priority: 100, maxVoices: 8 },
+});
+
 function refreshSharedState() {
   if (!engine) return;
   byId("core-version").textContent = engine.coreVersion;
@@ -80,22 +90,59 @@ const run = (action) => void action().catch((error) => {
   announce(`Ошибка сценария: ${error instanceof Error ? error.message : String(error)}`);
 });
 
+function restoreBaseline() {
+  if (!engine) return;
+  engine.setMasterVolume(1, 80);
+  engine.setQuality("hrtf");
+  engine.setRoom("dry", 100);
+  engine.setListenerPosition([0, 0, 0], 100);
+  engine.setListenerOrientation([0, 0, -1], [0, 1, 0], 100);
+  for (const [category, options] of Object.entries(categoryDefaults)) {
+    engine.configureCategory(category, options);
+  }
+  refreshSharedState();
+}
+
 async function runSelected() {
-  await tour.run(levelSelect.value);
+  try {
+    await tour.run(levelSelect.value);
+  } finally {
+    restoreBaseline();
+  }
+}
+
+async function repeatLast() {
+  try {
+    await tour.repeat();
+  } finally {
+    restoreBaseline();
+  }
 }
 
 async function runAll() {
   levelSelect.value = "all";
   updateDescription();
-  await tour.run("all");
+  try {
+    await tour.run("all");
+  } finally {
+    restoreBaseline();
+  }
+}
+
+async function stopTour(message) {
+  try {
+    await tour.stop(message);
+  } finally {
+    restoreBaseline();
+  }
 }
 
 levelSelect.addEventListener("change", updateDescription);
 byId("tour-run").addEventListener("click", () => run(runSelected));
-byId("tour-repeat").addEventListener("click", () => run(tour.repeat));
+byId("tour-repeat").addEventListener("click", () => run(repeatLast));
 byId("tour-all").addEventListener("click", () => run(runAll));
-byId("tour-stop").addEventListener("click", () => run(() => tour.stop()));
-byId("stop").addEventListener("click", () => run(() => tour.stop("Все звуки аварийно остановлены.")));
+byId("tour-stop").addEventListener("click", () => run(() => stopTour()));
+byId("stop").addEventListener("click", () => run(() => stopTour("Все звуки аварийно остановлены.")));
 
 document.addEventListener("keydown", (event) => {
   if (event.repeat || event.ctrlKey || event.altKey || event.metaKey) return;
@@ -106,10 +153,10 @@ document.addEventListener("keydown", (event) => {
   const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
   const actions = {
     t: runSelected,
-    p: tour.repeat,
+    p: repeatLast,
     g: runAll,
-    x: () => tour.stop(),
-    Escape: () => tour.stop("Все звуки аварийно остановлены."),
+    x: () => stopTour(),
+    Escape: () => stopTour("Все звуки аварийно остановлены."),
   };
   const action = actions[key];
   if (!action) return;
