@@ -1,67 +1,92 @@
-name: Verify public Safari listening lab
+name: Publish and verify public listening lab
 
 on:
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: "public-site-verify"
+  group: "public-site-publish"
   cancel-in-progress: true
 
 jobs:
-  verify-public-site:
+  build-publish-verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 45
     steps:
-      - name: Probe public HTML, modules and WASM
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure stable Rust
         shell: bash
         run: |
-          set -u
-          repo="egor125552/rust-Aaja-game-engine-web"
-          sha="2b5012aab5840258555e89ff9dce27c66ca42753"
-          candidates=(
-            "https://rawcdn.githack.com/${repo}/${sha}/index.html"
-            "https://raw.githack.com/${repo}/public-site/index.html"
-            "https://cdn.jsdelivr.net/gh/${repo}@${sha}/index.html"
-          )
+          rustup set profile minimal
+          rustup toolchain install stable --no-self-update
+          rustup default stable
+          rustup target add wasm32-unknown-unknown
 
-          for url in "${candidates[@]}"; do
-            base="${url%/index.html}"
-            echo "--- probing $url"
-            if ! curl --fail --silent --show-error --location --max-time 30 -D index.headers "$url" -o index.html; then
-              echo "index request failed"
-              continue
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked --version 0.15.0
+
+      - name: Build production demo
+        run: npm run build
+
+      - name: Publish static site branch including WASM
+        id: publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test -s demo/dist/engine/wasm/audio_game_core_bg.wasm
+          cd demo/dist
+          touch .nojekyll
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b public-site
+          git add --all --force
+          git commit -m "Publish listening lab from ${GITHUB_SHA}"
+          site_sha="$(git rev-parse HEAD)"
+          git ls-files engine/wasm/audio_game_core_bg.wasm | grep -q .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin public-site
+          echo "site_sha=${site_sha}" >> "$GITHUB_OUTPUT"
+          echo "url=https://rawcdn.githack.com/${GITHUB_REPOSITORY}/${site_sha}/index.html" >> "$GITHUB_OUTPUT"
+
+      - name: Verify public Safari resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="${{ steps.publish.outputs.url }}"
+          base="${url%/index.html}"
+          for attempt in {1..36}; do
+            if html="$(curl --fail --silent --show-error --location "$url")"; then
+              grep -q "Aaja Audio Game Engine" <<<"$html"
+              curl --fail --silent --show-error --location "$base/src/feature-tour-ui.js" -o feature-tour-ui.js
+              curl --fail --silent --show-error --location "$base/engine/index.js" -o engine.js
+              curl --fail --silent --show-error --location "$base/engine/wasm/audio_game_core_bg.wasm" -o core.wasm
+              test -s feature-tour-ui.js
+              test -s engine.js
+              test -s core.wasm
+              printf 'WASM magic: '
+              od -An -tx1 -N4 core.wasm
+              test "$(od -An -tx1 -N4 core.wasm | tr -d ' \n')" = "0061736d"
+              echo "WORKING_URL=$url"
+              exit 0
             fi
-            cat index.headers
-            if ! grep -q "Aaja Audio Game Engine" index.html; then
-              echo "index body is not the listening lab"
-              head -c 300 index.html || true
-              continue
-            fi
-            if ! curl --fail --silent --show-error --location --max-time 30 -D js.headers "$base/src/feature-tour-ui.js" -o feature-tour-ui.js; then
-              echo "scenario module request failed"
-              continue
-            fi
-            if ! curl --fail --silent --show-error --location --max-time 30 -D engine.headers "$base/engine/index.js" -o engine.js; then
-              echo "engine module request failed"
-              continue
-            fi
-            if ! curl --fail --silent --show-error --location --max-time 30 -D wasm.headers "$base/engine/wasm/audio_game_core_bg.wasm" -o core.wasm; then
-              echo "WASM request failed"
-              continue
-            fi
-            test -s feature-tour-ui.js
-            test -s engine.js
-            test -s core.wasm
-            echo "HTML headers:"; cat index.headers
-            echo "JS headers:"; cat js.headers
-            echo "WASM headers:"; cat wasm.headers
-            echo "WORKING_URL=$url"
-            exit 0
+            sleep 5
           done
-
-          echo "No public mirror served the complete listening lab."
+          echo "Public site did not become reachable: $url"
           exit 1
