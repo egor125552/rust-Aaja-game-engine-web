@@ -31,43 +31,72 @@ jobs:
       - name: Install WebKit runtime
         run: npx playwright install --with-deps webkit
 
-      - name: Open public lab in WebKit
+      - name: Capture public WebKit result
         env:
           PUBLIC_URL: https://rawcdn.githack.com/egor125552/rust-Aaja-game-engine-web/10f06a7301a14cae592e9c16c483397f1fc47d68/index.html
         shell: bash
         run: |
-          node --input-type=module <<'JS'
+          set +e
+          node --input-type=module >remote-webkit.log 2>&1 <<'JS'
           import { webkit } from '@playwright/test';
 
           const browser = await webkit.launch();
           const page = await browser.newPage();
-          const errors = [];
-          page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
-          page.on('console', message => {
-            if (message.type() === 'error') errors.push(`console: ${message.text()}`);
-          });
-          page.on('requestfailed', request => {
-            errors.push(`request: ${request.url()} — ${request.failure()?.errorText ?? 'failed'}`);
+          const events = [];
+          page.on('pageerror', error => events.push(`pageerror: ${error.message}`));
+          page.on('console', message => events.push(`console.${message.type()}: ${message.text()}`));
+          page.on('requestfailed', request => events.push(`requestfailed: ${request.url()} — ${request.failure()?.errorText ?? 'failed'}`));
+          page.on('response', response => {
+            const url = response.url();
+            if (url.includes('audio_game_core') || url.endsWith('.js') || url.endsWith('.wasm')) {
+              events.push(`response: ${response.status()} ${url} ${response.headers()['content-type'] ?? ''}`);
+            }
           });
 
-          const response = await page.goto(process.env.PUBLIC_URL, {
-            waitUntil: 'networkidle',
-            timeout: 60_000,
-          });
-          if (!response?.ok()) throw new Error(`Navigation failed: ${response?.status()}`);
-          await page.getByRole('heading', { name: 'Aaja Audio Game Engine' }).waitFor();
-          const enable = page.getByRole('button', { name: 'Включить звук' });
-          await enable.waitFor();
-          await enable.click();
-          await page.waitForFunction(() => {
-            const value = document.querySelector('#core-version')?.textContent?.trim();
-            return value && value !== 'не загружено';
-          }, undefined, { timeout: 30_000 });
-          const core = await page.locator('#core-version').innerText();
-          const context = await page.locator('#context-state').innerText();
-          if (errors.length) throw new Error(errors.join('\n'));
-          console.log(`WEBKIT_URL=${process.env.PUBLIC_URL}`);
-          console.log(`CORE_VERSION=${core}`);
-          console.log(`AUDIO_CONTEXT=${context}`);
-          await browser.close();
+          try {
+            const response = await page.goto(process.env.PUBLIC_URL, { waitUntil: 'networkidle', timeout: 60_000 });
+            events.push(`navigation: ${response?.status()} ${response?.headers()['content-type'] ?? ''}`);
+            await page.getByRole('heading', { name: 'Aaja Audio Game Engine' }).waitFor();
+            const enable = page.getByRole('button', { name: 'Включить звук' });
+            await enable.waitFor();
+            await enable.click();
+            await page.waitForTimeout(3000);
+            const core = await page.locator('#core-version').innerText();
+            const context = await page.locator('#context-state').innerText();
+            const status = await page.locator('#status').innerText();
+            events.push(`core: ${core}`);
+            events.push(`context: ${context}`);
+            events.push(`status: ${status}`);
+            console.log(events.join('\n'));
+            if (!core || core === 'не загружено') throw new Error('Rust/WASM core did not load');
+            if (events.some(event => event.startsWith('pageerror:') || event.startsWith('requestfailed:') || event.startsWith('console.error:'))) {
+              throw new Error('Browser emitted an error; see event log above');
+            }
+          } finally {
+            await browser.close();
+          }
           JS
+          status=$?
+          printf '%s\n' "$status" > remote-webkit.status
+          cat remote-webkit.log
+          exit 0
+
+      - name: Upload remote diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-webkit-diagnostics
+          path: |
+            remote-webkit.log
+            remote-webkit.status
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Require successful public WebKit run
+        shell: bash
+        run: |
+          status="$(cat remote-webkit.status)"
+          if [[ "$status" != "0" ]]; then
+            cat remote-webkit.log
+            exit "$status"
+          fi
