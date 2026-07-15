@@ -107,6 +107,7 @@ export class AudioGameEngine extends EventTarget {
       mixer: this.#mixer,
       diagnostics: this.diagnostics,
       get quality() { return engine.#quality; },
+      resume: () => this.resume(),
       sourceStarted: (source) => this.#sourceStarted(source),
       sourceStopped: (source) => this.#sourceStopped(source),
       sourceDisposed: (source) => this.#sourceDisposed(source),
@@ -152,8 +153,8 @@ export class AudioGameEngine extends EventTarget {
     if (!options.context && typeof AudioContext === "undefined") {
       throw new Error("Web Audio API is not available in this browser");
     }
-    const core = await CoreBridge.load();
     let context: AudioContext | undefined;
+    let core: CoreBridge | undefined;
     try {
       const latencyHint = typeof options.latencyHint === "number"
         ? clamp(options.latencyHint, 0.001, 1)
@@ -162,8 +163,16 @@ export class AudioGameEngine extends EventTarget {
       if (context.state === "closed") {
         throw new Error("Cannot start the audio game engine with a closed AudioContext");
       }
+
+      // Start the browser unlock attempt before the first asynchronous module load.
+      // Firefox can lose transient user activation while the WASM module is fetched.
+      const initialResume = context.state === "running"
+        ? Promise.resolve()
+        : context.resume();
+
+      core = await CoreBridge.load();
       const engine = new AudioGameEngine(context, core, options);
-      await engine.resume();
+      await engine.#settleResumeAttempt(initialResume);
       engine.diagnostics.info("engine.started", "Audio game engine started", {
         coreVersion: core.version,
         sampleRate: context.sampleRate,
@@ -171,7 +180,7 @@ export class AudioGameEngine extends EventTarget {
       });
       return engine;
     } catch (error) {
-      core.dispose();
+      core?.dispose();
       if (!options.context && context && context.state !== "closed") {
         await context.close().catch(() => undefined);
       }
@@ -206,15 +215,36 @@ export class AudioGameEngine extends EventTarget {
   async resume(): Promise<void> {
     if (this.#closed) throw new Error("Audio game engine is closed");
     if (this.#context.state === "suspended" || (this.#context.state as string) === "interrupted") {
-      try {
-        await this.#context.resume();
-      } catch (error) {
-        this.diagnostics.warning(
-          "context.resume.failed",
-          "Audio could not resume before a user gesture",
-          { reason: error instanceof Error ? error.message : String(error) },
-        );
-      }
+      await this.#settleResumeAttempt(this.#context.resume());
+    }
+  }
+
+  async #settleResumeAttempt(attempt: Promise<void>, timeoutMs = 750): Promise<void> {
+    let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+    const timeout = new Promise<"timeout">((resolve) => {
+      timeoutId = globalThis.setTimeout(() => resolve("timeout"), timeoutMs);
+    });
+    const result = await Promise.race([
+      attempt.then(
+        () => "resumed" as const,
+        (error: unknown) => ({ error }),
+      ),
+      timeout,
+    ]);
+    if (timeoutId !== undefined) globalThis.clearTimeout(timeoutId);
+
+    if (typeof result === "object") {
+      this.diagnostics.warning(
+        "context.resume.failed",
+        "Audio could not resume before a user gesture",
+        { reason: result.error instanceof Error ? result.error.message : String(result.error) },
+      );
+    } else if (result === "timeout" && this.#context.state !== "running") {
+      this.diagnostics.warning(
+        "context.resume.pending",
+        "Audio resume is still pending; another user gesture may be required",
+        { state: this.#context.state },
+      );
     }
   }
 
