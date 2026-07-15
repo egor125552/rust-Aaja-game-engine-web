@@ -58,11 +58,24 @@ jobs:
       - name: Unit and contract tests
         run: npm test
 
-      - name: Production build
+      - name: Capture production build result
         shell: bash
         run: |
-          set -o pipefail
-          npm run build 2>&1 | tee build.log
+          set +e
+          npm run build > build.log 2>&1
+          status=$?
+          printf '%s\n' "$status" > build.status
+          cat build.log
+          exit 0
+
+      - name: Require successful production build
+        shell: bash
+        run: |
+          status="$(cat build.status)"
+          if [[ "$status" != "0" ]]; then
+            echo "Production build failed with exit code $status."
+            exit "$status"
+          fi
 
       - name: Verify generated WASM and package layout
         shell: bash
@@ -96,6 +109,7 @@ jobs:
           name: aaja-audio-demo-${{ github.run_attempt }}
           path: |
             build.log
+            build.status
             demo/dist
             packages/engine/dist
             playwright-report
