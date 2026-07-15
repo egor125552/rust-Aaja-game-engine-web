@@ -5,3 +5,5 @@ The default-branch workflow is the authoritative clean environment for checks th
 It must build the real Rust crate for `wasm32-unknown-unknown`, execute Rust and JavaScript tests, verify the generated WASM boundary, build the distributable engine and demo, and run smoke checks in Chromium, Firefox, and WebKit.
 
 A green TypeScript-only run is not sufficient to declare the release ready.
+
+Validation PRs must commit the exact `rustfmt` result before the authoritative CI run; CI is not allowed to hide formatter changes in its working tree.
