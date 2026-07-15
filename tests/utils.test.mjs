@@ -7,6 +7,10 @@ import {
   normalizeDirection,
   sanitizeRampMs,
   sanitizeVec3,
+  setListenerOrientationParams,
+  setListenerPositionParams,
+  setOrientationParams,
+  setPositionParams,
 } from "../packages/engine/dist/utils.js";
 
 test("numeric guards reject non-finite values and enforce ranges", () => {
@@ -35,4 +39,29 @@ test("generated source identifiers are distinct", () => {
   const second = createId("sound");
   assert.notEqual(first, second);
   assert.match(first, /^sound-/);
+});
+
+test("legacy Web Audio spatial setters are used when AudioParam fields are absent", () => {
+  const calls = [];
+  const context = { currentTime: 0 };
+  const listener = {
+    setPosition: (...values) => calls.push(["listener-position", ...values]),
+    setOrientation: (...values) => calls.push(["listener-orientation", ...values]),
+  };
+  const panner = {
+    setPosition: (...values) => calls.push(["panner-position", ...values]),
+    setOrientation: (...values) => calls.push(["panner-orientation", ...values]),
+  };
+
+  setListenerPositionParams(listener, [1, 2, 3], context, 30);
+  setListenerOrientationParams(listener, [0, 0, -1], [0, 1, 0], context, 30);
+  setPositionParams(panner, [-4, 5, 6], context, 30);
+  setOrientationParams(panner, [1, 0, 0], context, 30);
+
+  assert.deepEqual(calls, [
+    ["listener-position", 1, 2, 3],
+    ["listener-orientation", 0, 0, -1, 0, 1, 0],
+    ["panner-position", -4, 5, 6],
+    ["panner-orientation", 1, 0, 0],
+  ]);
 });
