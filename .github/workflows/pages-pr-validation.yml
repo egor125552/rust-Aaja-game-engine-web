@@ -1,31 +1,23 @@
-name: Publish and verify public listening lab
+name: Verify public listening lab in WebKit
 
 on:
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: "public-site-publish"
+  group: "public-site-webkit"
   cancel-in-progress: true
 
 jobs:
-  build-publish-verify:
+  webkit-public-url:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Configure stable Rust
-        shell: bash
-        run: |
-          rustup set profile minimal
-          rustup toolchain install stable --no-self-update
-          rustup default stable
-          rustup target add wasm32-unknown-unknown
 
       - name: Configure Node.js
         uses: actions/setup-node@v4
@@ -33,60 +25,49 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install JavaScript dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Install wasm-pack
-        run: cargo install wasm-pack --locked --version 0.15.0
+      - name: Install WebKit runtime
+        run: npx playwright install --with-deps webkit
 
-      - name: Build production demo
-        run: npm run build
-
-      - name: Publish static site branch including WASM
-        id: publish
-        shell: bash
+      - name: Open public lab in WebKit
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          test -s demo/dist/engine/wasm/audio_game_core_bg.wasm
-          cd demo/dist
-          touch .nojekyll
-          git init
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b public-site
-          git add --all --force
-          git commit -m "Publish listening lab from ${GITHUB_SHA}"
-          site_sha="$(git rev-parse HEAD)"
-          git ls-files engine/wasm/audio_game_core_bg.wasm | grep -q .
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push --force origin public-site
-          echo "site_sha=${site_sha}" >> "$GITHUB_OUTPUT"
-          echo "url=https://rawcdn.githack.com/${GITHUB_REPOSITORY}/${site_sha}/index.html" >> "$GITHUB_OUTPUT"
-
-      - name: Verify public Safari resources
+          PUBLIC_URL: https://rawcdn.githack.com/egor125552/rust-Aaja-game-engine-web/10f06a7301a14cae592e9c16c483397f1fc47d68/index.html
         shell: bash
         run: |
-          set -euo pipefail
-          url="${{ steps.publish.outputs.url }}"
-          base="${url%/index.html}"
-          for attempt in {1..36}; do
-            if html="$(curl --fail --silent --show-error --location "$url")"; then
-              grep -q "Aaja Audio Game Engine" <<<"$html"
-              curl --fail --silent --show-error --location "$base/src/feature-tour-ui.js" -o feature-tour-ui.js
-              curl --fail --silent --show-error --location "$base/engine/index.js" -o engine.js
-              curl --fail --silent --show-error --location "$base/engine/wasm/audio_game_core_bg.wasm" -o core.wasm
-              test -s feature-tour-ui.js
-              test -s engine.js
-              test -s core.wasm
-              printf 'WASM magic: '
-              od -An -tx1 -N4 core.wasm
-              test "$(od -An -tx1 -N4 core.wasm | tr -d ' \n')" = "0061736d"
-              echo "WORKING_URL=$url"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Public site did not become reachable: $url"
-          exit 1
+          node --input-type=module <<'JS'
+          import { webkit } from '@playwright/test';
+
+          const browser = await webkit.launch();
+          const page = await browser.newPage();
+          const errors = [];
+          page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
+          page.on('console', message => {
+            if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+          });
+          page.on('requestfailed', request => {
+            errors.push(`request: ${request.url()} — ${request.failure()?.errorText ?? 'failed'}`);
+          });
+
+          const response = await page.goto(process.env.PUBLIC_URL, {
+            waitUntil: 'networkidle',
+            timeout: 60_000,
+          });
+          if (!response?.ok()) throw new Error(`Navigation failed: ${response?.status()}`);
+          await page.getByRole('heading', { name: 'Aaja Audio Game Engine' }).waitFor();
+          const enable = page.getByRole('button', { name: 'Включить звук' });
+          await enable.waitFor();
+          await enable.click();
+          await page.waitForFunction(() => {
+            const value = document.querySelector('#core-version')?.textContent?.trim();
+            return value && value !== 'не загружено';
+          }, undefined, { timeout: 30_000 });
+          const core = await page.locator('#core-version').innerText();
+          const context = await page.locator('#context-state').innerText();
+          if (errors.length) throw new Error(errors.join('\n'));
+          console.log(`WEBKIT_URL=${process.env.PUBLIC_URL}`);
+          console.log(`CORE_VERSION=${core}`);
+          console.log(`AUDIO_CONTEXT=${context}`);
+          await browser.close();
+          JS
