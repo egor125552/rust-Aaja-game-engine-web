@@ -59,7 +59,10 @@ jobs:
         run: npm test
 
       - name: Production build
-        run: npm run build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
 
       - name: Verify generated WASM and package layout
         shell: bash
@@ -92,6 +95,7 @@ jobs:
         with:
           name: aaja-audio-demo-${{ github.run_attempt }}
           path: |
+            build.log
             demo/dist
             packages/engine/dist
             playwright-report
