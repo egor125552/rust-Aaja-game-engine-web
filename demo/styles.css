@@ -1,0 +1,81 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+section {
+  margin-block: 1.5rem;
+  padding-block: 0.5rem;
+  border-top: 1px solid currentColor;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+button,
+summary {
+  font: inherit;
+}
+
+button {
+  min-height: 2.75rem;
+  padding: 0.55rem 0.8rem;
+  border: 2px solid currentColor;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+
+button:focus-visible,
+summary:focus-visible {
+  outline: 0.25rem solid Highlight;
+  outline-offset: 0.2rem;
+}
+
+.primary {
+  font-weight: 700;
+}
+
+.danger {
+  font-weight: 700;
+  margin-top: 1rem;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: minmax(11rem, 1fr) 2fr;
+  gap: 0.4rem 1rem;
+}
+
+dt {
+  font-weight: 700;
+}
+
+dd {
+  margin: 0;
+}
+
+#status {
+  min-height: 3rem;
+  padding: 0.75rem;
+  border: 2px solid currentColor;
+}
+
+@media (max-width: 34rem) {
+  dl {
+    grid-template-columns: 1fr;
+  }
+}

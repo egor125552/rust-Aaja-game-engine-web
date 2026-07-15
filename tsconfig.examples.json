@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@aaja/audio-game-engine": ["packages/engine/src/index.ts"]
+    },
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": ["examples/**/*.ts"]
+}

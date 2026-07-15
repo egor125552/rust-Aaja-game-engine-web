@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      # Avoid a third-party Rust setup action so repositories that only allow
+      # GitHub-owned actions can still run the workflow.
+      - name: Configure stable Rust
+        shell: bash
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable --no-self-update --component rustfmt,clippy
+          rustup default stable
+          rustup target add wasm32-unknown-unknown
+          rustc --version
+          cargo --version
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked --version 0.15.0
+
+      - name: Rust formatting
+        run: npm run format:rust
+
+      - name: Rust lint
+        run: npm run lint:rust
+
+      - name: Type, unit, and contract tests
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify generated WASM and package layout
+        shell: bash
+        run: |
+          test -s packages/engine/dist/wasm/audio_game_core_bg.wasm
+          test -s packages/engine/dist/wasm/audio_game_core.js
+          test -s demo/dist/engine/wasm/audio_game_core_bg.wasm
+          npm run test:wasm
+          npm pack --dry-run --workspace packages/engine
+          echo "WASM bytes: $(wc -c < packages/engine/dist/wasm/audio_game_core_bg.wasm)"
+          echo "Engine package bytes: $(du -sb packages/engine/dist | cut -f1)"
+
+      - name: Install browser runtimes
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Browser smoke tests
+        run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aaja-audio-demo-${{ github.run_attempt }}
+          path: |
+            demo/dist
+            packages/engine/dist
+            playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 7

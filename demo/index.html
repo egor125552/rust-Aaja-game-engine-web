@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aaja Audio Game Engine — слуховой стенд</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <h1>Aaja Audio Game Engine</h1>
+    <p>
+      Доступный слуховой стенд пространственного движка. Лучше использовать наушники.
+      Сначала нажми «Включить звук». Фокус после действий никуда не переносится.
+    </p>
+
+    <details>
+      <summary>Клавиши</summary>
+      <p>
+        1–4 — слева, спереди, справа и сзади; R — последовательность направлений;
+        A — приближение; B — маяк; C — помещение; O — заглушение; H — качество;
+        D — ducking; M — несколько источников; L — загрузка WAV; W, S — движение
+        слушателя; Q, E — поворот; Escape — аварийная остановка.
+      </p>
+    </details>
+
+    <button id="enable" class="primary" aria-keyshortcuts="Enter">Включить звук</button>
+
+    <section aria-labelledby="directions-title">
+      <h2 id="directions-title">Пространственные сценарии</h2>
+      <div class="controls">
+        <button data-direction="left" aria-keyshortcuts="1">Слева — 1</button>
+        <button data-direction="front" aria-keyshortcuts="2">Спереди — 2</button>
+        <button data-direction="right" aria-keyshortcuts="3">Справа — 3</button>
+        <button data-direction="rear" aria-keyshortcuts="4">Сзади — 4</button>
+        <button id="sequence" aria-keyshortcuts="R">Четыре направления — R</button>
+        <button id="approach" aria-keyshortcuts="A">Приближение — A</button>
+        <button id="beacon" aria-keyshortcuts="B">Запустить маяк — B</button>
+        <button id="distance">Изменить дальность маяка</button>
+        <button id="many" aria-keyshortcuts="M">Несколько источников — M</button>
+        <button id="loaded-file" aria-keyshortcuts="L">Загрузить и декодировать WAV — L</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="listener-title">
+      <h2 id="listener-title">Слушатель</h2>
+      <div class="controls">
+        <button id="listener-forward" aria-keyshortcuts="W">Шаг вперёд — W</button>
+        <button id="listener-back" aria-keyshortcuts="S">Шаг назад — S</button>
+        <button id="turn-left" aria-keyshortcuts="Q">Повернуться влево — Q</button>
+        <button id="turn-right" aria-keyshortcuts="E">Повернуться вправо — E</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="acoustics-title">
+      <h2 id="acoustics-title">Акустика и микшер</h2>
+      <div class="controls">
+        <button id="room" aria-keyshortcuts="C">Следующее помещение — C</button>
+        <button id="occlusion" aria-keyshortcuts="O">Изменить заглушение — O</button>
+        <button id="quality" aria-keyshortcuts="H">Переключить HRTF — H</button>
+        <button id="ducking" aria-keyshortcuts="D">Проверить ducking — D</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="state-title">
+      <h2 id="state-title">Текущее состояние</h2>
+      <dl>
+        <dt>Rust/WASM-ядро</dt><dd id="core-version">не загружено</dd>
+        <dt>AudioContext</dt><dd id="context-state">не создан</dd>
+        <dt>Помещение</dt><dd id="room-value">dry</dd>
+        <dt>Заглушение</dt><dd id="occlusion-value">0</dd>
+        <dt>Качество</dt><dd id="quality-value">HRTF</dd>
+        <dt>Дальность маяка</dt><dd id="distance-value">5 метров</dd>
+        <dt>Слушатель</dt><dd id="listener-value">x 0, z 0, поворот 0 градусов</dd>
+        <dt>Активные источники</dt><dd id="active-value">0</dd>
+        <dt>Кэшированные файлы</dt><dd id="cache-value">0</dd>
+      </dl>
+    </section>
+
+    <button id="stop" class="danger" aria-keyshortcuts="Escape">Аварийно остановить все звуки — Escape</button>
+    <p id="status" role="status" aria-live="polite" aria-atomic="true">Звук ещё не включён.</p>
+  </main>
+
+  <script type="importmap">
+    {"imports":{"@aaja/audio-game-engine":"./engine/index.js"}}
+  </script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
