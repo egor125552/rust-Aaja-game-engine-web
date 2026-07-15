@@ -73,6 +73,91 @@ const hasAudioParam = (value: unknown): value is AudioParam =>
   && value !== null
   && typeof (value as AudioParam).setValueAtTime === "function";
 
+type LegacyListenerState = {
+  position: [number, number, number];
+  forward: [number, number, number];
+  up: [number, number, number];
+  adapters: Map<string, AudioParam>;
+};
+
+const legacyListenerStates = new WeakMap<AudioListener, LegacyListenerState>();
+
+const legacyListenerState = (listener: AudioListener): LegacyListenerState => {
+  const existing = legacyListenerStates.get(listener);
+  if (existing) return existing;
+  const created: LegacyListenerState = {
+    position: [0, 0, 0],
+    forward: [0, 0, -1],
+    up: [0, 1, 0],
+    adapters: new Map(),
+  };
+  legacyListenerStates.set(listener, created);
+  return created;
+};
+
+const installLegacyListenerAudioParams = (): void => {
+  const constructor = (globalThis as typeof globalThis & {
+    AudioListener?: { prototype: AudioListener };
+  }).AudioListener;
+  if (!constructor) return;
+  const prototype = constructor.prototype;
+  const legacy = prototype as LegacyAudioListener;
+  if (typeof legacy.setPosition !== "function" || typeof legacy.setOrientation !== "function") return;
+
+  const define = (
+    property: "positionX" | "positionY" | "positionZ" | "forwardX" | "forwardY" | "forwardZ" | "upX" | "upY" | "upZ",
+    vector: "position" | "forward" | "up",
+    axis: 0 | 1 | 2,
+  ): void => {
+    if (property in prototype) return;
+    Object.defineProperty(prototype, property, {
+      configurable: true,
+      get(this: AudioListener): AudioParam {
+        const state = legacyListenerState(this);
+        const cached = state.adapters.get(property);
+        if (cached) return cached;
+        const apply = (value: number): void => {
+          if (!Number.isFinite(value)) return;
+          state[vector][axis] = value;
+          const current = this as LegacyAudioListener;
+          if (vector === "position") {
+            current.setPosition?.(...state.position);
+          } else {
+            current.setOrientation?.(...state.forward, ...state.up);
+          }
+        };
+        const adapter = {
+          get value(): number { return state[vector][axis]; },
+          set value(value: number) { apply(value); },
+          cancelScheduledValues: (): AudioParam => adapter as AudioParam,
+          setValueAtTime: (value: number): AudioParam => {
+            apply(value);
+            return adapter as AudioParam;
+          },
+          linearRampToValueAtTime: (value: number): AudioParam => {
+            apply(value);
+            return adapter as AudioParam;
+          },
+        } as unknown as AudioParam;
+        state.adapters.set(property, adapter);
+        return adapter;
+      },
+    });
+  };
+
+  define("positionX", "position", 0);
+  define("positionY", "position", 1);
+  define("positionZ", "position", 2);
+  define("forwardX", "forward", 0);
+  define("forwardY", "forward", 1);
+  define("forwardZ", "forward", 2);
+  define("upX", "up", 0);
+  define("upY", "up", 1);
+  define("upZ", "up", 2);
+};
+
+installLegacyListenerAudioParams();
+
 export const setPositionParams = (
   node: PannerNode,
   position: Vec3,
