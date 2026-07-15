@@ -7,3 +7,7 @@
 - Added procedural rooms, custom preset import/export, smooth occlusion, category mixer, limits, automatic speech ducking, emergency stop, and diagnostics.
 - Added keyboard and screen-reader listening lab with reproducible direction, approach, room, occlusion, ducking, and recovery scenarios.
 - Added Rust, WASM-boundary, TypeScript, and Chromium/Firefox/WebKit CI checks plus manual iPhone/VoiceOver instructions.
+- Fixed production `wasm-opt` validation for Rust bulk-memory output while retaining size optimization.
+- Fixed Firefox startup hangs by beginning resume during the user gesture and bounding unresolved `AudioContext.resume()` attempts.
+- Added modern AudioParam and legacy `setPosition()`/`setOrientation()` compatibility for listener and source spatial controls.
+- Verified a clean optimized WASM build, JS/WASM contract, formatter, Clippy, focused tests, and automated demo smoke checks in Chromium, Firefox, and WebKit.

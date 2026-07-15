@@ -28,9 +28,7 @@ pub fn select_voice_to_evict<'a>(
 
     candidates
         .into_iter()
-        .filter(|voice| {
-            voice.active && (!category_over_limit || voice.category == category)
-        })
+        .filter(|voice| voice.active && (!category_over_limit || voice.category == category))
         .min_by(|left, right| {
             left.priority
                 .cmp(&right.priority)
@@ -99,6 +97,9 @@ mod tests {
                 active: true,
             },
         ];
-        assert_eq!(select_voice_to_evict(candidates, "danger", 8, 1), Some("music"));
+        assert_eq!(
+            select_voice_to_evict(candidates, "danger", 8, 1),
+            Some("music")
+        );
     }
 }

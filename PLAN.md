@@ -4,28 +4,29 @@ Status legend: `[x]` implemented and verified in the available environment, `[~]
 
 ## Environment facts
 
-- Node.js/TypeScript checks can run locally.
-- This container has no Rust toolchain and cannot download one, so native Rust and generated WASM checks must run in GitHub Actions.
-- Local Chromium navigation to `localhost` and `file://` is blocked by an administrator policy (`ERR_BLOCKED_BY_ADMINISTRATOR`), so browser execution must run in GitHub Actions or on user hardware.
-- A physical iPhone and VoiceOver are not available; a precise manual script is included.
+- Node.js/TypeScript checks ran locally.
+- The local container had no Rust toolchain and external DNS blocked installation, so authoritative Rust/WASM checks ran in GitHub Actions.
+- GitHub Actions built the real optimized WASM package and completed automated smoke checks in Chromium, Firefox, and WebKit.
+- Headless browser checks validate loading, lifecycle, controls, focus preservation, console cleanliness, and Web Audio graph creation; they do not prove subjective acoustic quality.
+- A physical iPhone, VoiceOver, and headphone listening session were not available; precise manual scripts are included.
 
 ## Phase 0 — research and skeleton
 
 - [x] Minimal hybrid stack selected and documented.
 - [x] Workspace, agent guide, build scripts, ADRs, and demo skeleton created.
 - [x] Rust/WASM crate and TypeScript façade contract aligned.
-- [~] Generated WASM loads in a browser — GitHub Actions check pending.
+- [x] Generated WASM loaded and executed in Chromium, Firefox, and WebKit automation.
 
 ## Phase 1 — working vertical slice
 
-- [x] One reusable `AudioContext`, resume hooks, state reporting, and repeat initialization guard.
+- [x] One reusable `AudioContext`, bounded resume/recovery hooks, state reporting, and repeat initialization guard.
 - [x] Buffer loading/cache, streaming path, play, pause, stop, restart, errors, and disposal implemented.
 - [x] Simple typed public API implemented and TypeScript-checked.
-- [~] Real browser playback through generated WASM — cross-browser CI pending.
+- [x] Browser automation created sources, exercised controls, repeated lifecycle operations, and loaded the real generated WASM.
 
 ## Phase 2 — spatial core
 
-- [x] Listener and source position/orientation implemented.
+- [x] Listener and source position/orientation implemented with modern AudioParam and legacy Web Audio compatibility paths.
 - [x] HRTF/equal-power quality modes and native distance models implemented.
 - [x] Smooth movement and finite parameter guards implemented.
 - [x] Reproducible direction and approach scenarios created.
@@ -43,15 +44,15 @@ Status legend: `[x]` implemented and verified in the available environment, `[~]
 - [x] Categories, volume, mute, priority, total/per-category limits implemented.
 - [x] Speech ducking and deterministic priority/distance-aware voice eviction implemented.
 - [x] Emergency stop and semantic keyboard listening lab implemented.
-- [~] Automated focus/console checks — cross-browser CI pending.
+- [x] Automated focus preservation, keyboard actions, status output, and console checks passed in three browser engines.
 - [~] Physical VoiceOver check — user-hardware script supplied.
 
 ## Phase 5 — resilience and performance
 
 - [x] One-shot node disconnection, explicit handle disposal, cached buffers, and no graph rebuild per frame.
-- [x] Context recovery hooks and runtime quality switching.
-- [x] Size-oriented release profile and CI artifact checks.
-- [~] Chromium, Firefox, and WebKit smoke — GitHub Actions pending.
+- [x] Context recovery hooks, bounded resume attempts, and runtime quality switching.
+- [x] Size-oriented release profile, bulk-memory-compatible `wasm-opt`, and CI artifact checks.
+- [x] Chromium, Firefox, and WebKit smoke checks passed.
 - [~] Real iPhone background/lock recovery — user hardware pending.
 - [ ] Profile real scenes with dozens of concurrent sources and record CPU/memory measurements.
 
@@ -59,5 +60,5 @@ Status legend: `[x]` implemented and verified in the available environment, `[~]
 
 - [x] Typed entry point, examples, architecture, limitations, and clean-build commands.
 - [x] CI pipeline for Rust, WASM contract, TypeScript, and three browser engines.
-- [~] Clean CI run and resulting bug fixes pending.
+- [x] Clean CI run completed after fixing formatter, WASM optimization, Firefox resume, and legacy listener compatibility issues.
 - [ ] npm publication intentionally deferred until package ownership and final public name are chosen.

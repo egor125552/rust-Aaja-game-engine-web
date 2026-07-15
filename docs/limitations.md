@@ -8,4 +8,5 @@
 - A reused source handle remains registered until `dispose()` so that pause/restart stays possible.
 - The engine does not yet profile and cull inaudible Web Audio graphs; Rust uses distance when choosing a victim after a limit is exceeded.
 - No custom AudioWorklet DSP is shipped yet.
+- Automated Chromium, Firefox, and WebKit checks prove that the real WASM package loads, controls execute, focus stays stable, and no unexpected console error occurs. Headless automation cannot prove that spatialization, reverb, and occlusion sound subjectively correct through real headphones.
 - Physical iPhone, VoiceOver, device lock, route changes, Bluetooth latency, and telephone interruptions require real-device testing.

@@ -51,15 +51,47 @@ export const automate = (
   else parameter.linearRampToValueAtTime(target, now + duration / 1_000);
 };
 
+type LegacyPanner = PannerNode & {
+  positionX?: AudioParam;
+  positionY?: AudioParam;
+  positionZ?: AudioParam;
+  orientationX?: AudioParam;
+  orientationY?: AudioParam;
+  orientationZ?: AudioParam;
+};
+
+type LegacyListener = AudioListener & {
+  positionX?: AudioParam;
+  positionY?: AudioParam;
+  positionZ?: AudioParam;
+  forwardX?: AudioParam;
+  forwardY?: AudioParam;
+  forwardZ?: AudioParam;
+  upX?: AudioParam;
+  upY?: AudioParam;
+  upZ?: AudioParam;
+};
+
+const hasThreeParams = (
+  first: AudioParam | undefined,
+  second: AudioParam | undefined,
+  third: AudioParam | undefined,
+): first is AudioParam => first !== undefined && second !== undefined && third !== undefined;
+
 export const setPositionParams = (
   node: PannerNode,
   position: Vec3,
   context: BaseAudioContext,
   rampMs: number,
 ): void => {
-  automate(node.positionX, position[0], context, rampMs);
-  automate(node.positionY, position[1], context, rampMs);
-  automate(node.positionZ, position[2], context, rampMs);
+  const compatible = node as LegacyPanner;
+  if (hasThreeParams(compatible.positionX, compatible.positionY, compatible.positionZ)) {
+    automate(compatible.positionX, position[0], context, rampMs);
+    automate(compatible.positionY as AudioParam, position[1], context, rampMs);
+    automate(compatible.positionZ as AudioParam, position[2], context, rampMs);
+    return;
+  }
+  compatible.setPosition(position[0], position[1], position[2]);
 };
 
 export const setOrientationParams = (
@@ -68,9 +100,56 @@ export const setOrientationParams = (
   context: BaseAudioContext,
   rampMs: number,
 ): void => {
-  automate(node.orientationX, orientation[0], context, rampMs);
-  automate(node.orientationY, orientation[1], context, rampMs);
-  automate(node.orientationZ, orientation[2], context, rampMs);
+  const compatible = node as LegacyPanner;
+  if (hasThreeParams(compatible.orientationX, compatible.orientationY, compatible.orientationZ)) {
+    automate(compatible.orientationX, orientation[0], context, rampMs);
+    automate(compatible.orientationY as AudioParam, orientation[1], context, rampMs);
+    automate(compatible.orientationZ as AudioParam, orientation[2], context, rampMs);
+    return;
+  }
+  compatible.setOrientation(orientation[0], orientation[1], orientation[2]);
+};
+
+export const setListenerPositionParams = (
+  listener: AudioListener,
+  position: Vec3,
+  context: BaseAudioContext,
+  rampMs: number,
+): void => {
+  const compatible = listener as LegacyListener;
+  if (hasThreeParams(compatible.positionX, compatible.positionY, compatible.positionZ)) {
+    automate(compatible.positionX, position[0], context, rampMs);
+    automate(compatible.positionY as AudioParam, position[1], context, rampMs);
+    automate(compatible.positionZ as AudioParam, position[2], context, rampMs);
+    return;
+  }
+  compatible.setPosition(position[0], position[1], position[2]);
+};
+
+export const setListenerOrientationParams = (
+  listener: AudioListener,
+  forward: Vec3,
+  up: Vec3,
+  context: BaseAudioContext,
+  rampMs: number,
+): void => {
+  const compatible = listener as LegacyListener;
+  const forwardParamsPresent = hasThreeParams(
+    compatible.forwardX,
+    compatible.forwardY,
+    compatible.forwardZ,
+  );
+  const upParamsPresent = hasThreeParams(compatible.upX, compatible.upY, compatible.upZ);
+  if (forwardParamsPresent && upParamsPresent) {
+    automate(compatible.forwardX, forward[0], context, rampMs);
+    automate(compatible.forwardY as AudioParam, forward[1], context, rampMs);
+    automate(compatible.forwardZ as AudioParam, forward[2], context, rampMs);
+    automate(compatible.upX as AudioParam, up[0], context, rampMs);
+    automate(compatible.upY as AudioParam, up[1], context, rampMs);
+    automate(compatible.upZ as AudioParam, up[2], context, rampMs);
+    return;
+  }
+  compatible.setOrientation(forward[0], forward[1], forward[2], up[0], up[1], up[2]);
 };
 
 export const createId = (() => {

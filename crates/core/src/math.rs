@@ -91,9 +91,7 @@ pub fn attenuation(
                 1.0 - rolloff * (clamped - reference) / (maximum - reference)
             }
         }
-        DistanceModel::Inverse => {
-            reference / (reference + rolloff * (clamped - reference))
-        }
+        DistanceModel::Inverse => reference / (reference + rolloff * (clamped - reference)),
         DistanceModel::Exponential => (clamped / reference).powf(-rolloff),
     };
     Ok(gain.clamp(0.0, 1.0))
@@ -121,8 +119,8 @@ mod tests {
             DistanceModel::Inverse,
             DistanceModel::Exponential,
         ] {
-            let value = attenuation(10.0, model, 1.0, 100.0, 1.0)
-                .expect("valid attenuation inputs");
+            let value =
+                attenuation(10.0, model, 1.0, 100.0, 1.0).expect("valid attenuation inputs");
             assert!((0.0..=1.0).contains(&value));
         }
     }

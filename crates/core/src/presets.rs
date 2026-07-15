@@ -118,7 +118,9 @@ mod tests {
     #[test]
     fn every_builtin_is_valid() {
         for name in names() {
-            assert!(built_in(name).and_then(|preset| preset.normalize().ok()).is_some());
+            assert!(built_in(name)
+                .and_then(|preset| preset.normalize().ok())
+                .is_some());
         }
     }
 
