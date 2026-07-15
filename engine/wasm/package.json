@@ -1,0 +1,17 @@
+{
+  "name": "aaja-audio-game-core",
+  "type": "module",
+  "description": "Deterministic Rust/WASM scene core for the Aaja accessible browser audio engine",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "audio_game_core_bg.wasm",
+    "audio_game_core.js",
+    "audio_game_core.d.ts"
+  ],
+  "main": "audio_game_core.js",
+  "types": "audio_game_core.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
