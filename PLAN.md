@@ -9,6 +9,7 @@ Status legend: `[x]` implemented and verified in the available environment, `[~]
 - Local Chromium navigation to `localhost` and `file://` is blocked by an administrator policy (`ERR_BLOCKED_BY_ADMINISTRATOR`), so browser execution must run in GitHub Actions or on user hardware.
 - A physical iPhone and VoiceOver are not available; a precise manual script is included.
 - The `ci-validation` pull request is the reproducible external gate for Rust/WASM and cross-browser verification.
+- CI run 29 installed Rust and `wasm-pack`, then passed Rust formatting after applying `rustfmt`, Clippy with warnings denied, and unit/contract tests. The next active blocker is the production WASM/package build; its full output is captured as `production-build.log`.
 
 ## Phase 0 — research and skeleton
 
