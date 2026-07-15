@@ -51,15 +51,45 @@ export const automate = (
   else parameter.linearRampToValueAtTime(target, now + duration / 1_000);
 };
 
+type LegacyPannerNode = PannerNode & {
+  setPosition?: (x: number, y: number, z: number) => void;
+  setOrientation?: (x: number, y: number, z: number) => void;
+};
+
+type LegacyAudioListener = AudioListener & {
+  setPosition?: (x: number, y: number, z: number) => void;
+  setOrientation?: (
+    forwardX: number,
+    forwardY: number,
+    forwardZ: number,
+    upX: number,
+    upY: number,
+    upZ: number,
+  ) => void;
+};
+
+const hasAudioParam = (value: unknown): value is AudioParam =>
+  typeof value === "object"
+  && value !== null
+  && typeof (value as AudioParam).setValueAtTime === "function";
+
 export const setPositionParams = (
   node: PannerNode,
   position: Vec3,
   context: BaseAudioContext,
   rampMs: number,
 ): void => {
-  automate(node.positionX, position[0], context, rampMs);
-  automate(node.positionY, position[1], context, rampMs);
-  automate(node.positionZ, position[2], context, rampMs);
+  if (hasAudioParam(node.positionX) && hasAudioParam(node.positionY) && hasAudioParam(node.positionZ)) {
+    automate(node.positionX, position[0], context, rampMs);
+    automate(node.positionY, position[1], context, rampMs);
+    automate(node.positionZ, position[2], context, rampMs);
+    return;
+  }
+  const legacy = node as LegacyPannerNode;
+  if (typeof legacy.setPosition !== "function") {
+    throw new Error("This browser does not provide a supported PannerNode position API");
+  }
+  legacy.setPosition(position[0], position[1], position[2]);
 };
 
 export const setOrientationParams = (
@@ -68,9 +98,74 @@ export const setOrientationParams = (
   context: BaseAudioContext,
   rampMs: number,
 ): void => {
-  automate(node.orientationX, orientation[0], context, rampMs);
-  automate(node.orientationY, orientation[1], context, rampMs);
-  automate(node.orientationZ, orientation[2], context, rampMs);
+  if (
+    hasAudioParam(node.orientationX)
+    && hasAudioParam(node.orientationY)
+    && hasAudioParam(node.orientationZ)
+  ) {
+    automate(node.orientationX, orientation[0], context, rampMs);
+    automate(node.orientationY, orientation[1], context, rampMs);
+    automate(node.orientationZ, orientation[2], context, rampMs);
+    return;
+  }
+  const legacy = node as LegacyPannerNode;
+  if (typeof legacy.setOrientation !== "function") {
+    throw new Error("This browser does not provide a supported PannerNode orientation API");
+  }
+  legacy.setOrientation(orientation[0], orientation[1], orientation[2]);
+};
+
+export const setListenerPositionParams = (
+  listener: AudioListener,
+  position: Vec3,
+  context: BaseAudioContext,
+  rampMs: number,
+): void => {
+  if (
+    hasAudioParam(listener.positionX)
+    && hasAudioParam(listener.positionY)
+    && hasAudioParam(listener.positionZ)
+  ) {
+    automate(listener.positionX, position[0], context, rampMs);
+    automate(listener.positionY, position[1], context, rampMs);
+    automate(listener.positionZ, position[2], context, rampMs);
+    return;
+  }
+  const legacy = listener as LegacyAudioListener;
+  if (typeof legacy.setPosition !== "function") {
+    throw new Error("This browser does not provide a supported AudioListener position API");
+  }
+  legacy.setPosition(position[0], position[1], position[2]);
+};
+
+export const setListenerOrientationParams = (
+  listener: AudioListener,
+  forward: Vec3,
+  up: Vec3,
+  context: BaseAudioContext,
+  rampMs: number,
+): void => {
+  if (
+    hasAudioParam(listener.forwardX)
+    && hasAudioParam(listener.forwardY)
+    && hasAudioParam(listener.forwardZ)
+    && hasAudioParam(listener.upX)
+    && hasAudioParam(listener.upY)
+    && hasAudioParam(listener.upZ)
+  ) {
+    automate(listener.forwardX, forward[0], context, rampMs);
+    automate(listener.forwardY, forward[1], context, rampMs);
+    automate(listener.forwardZ, forward[2], context, rampMs);
+    automate(listener.upX, up[0], context, rampMs);
+    automate(listener.upY, up[1], context, rampMs);
+    automate(listener.upZ, up[2], context, rampMs);
+    return;
+  }
+  const legacy = listener as LegacyAudioListener;
+  if (typeof legacy.setOrientation !== "function") {
+    throw new Error("This browser does not provide a supported AudioListener orientation API");
+  }
+  legacy.setOrientation(forward[0], forward[1], forward[2], up[0], up[1], up[2]);
 };
 
 export const createId = (() => {
