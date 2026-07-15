@@ -1,23 +1,18 @@
-name: Validate live GitHub Pages deployment
+name: Publish and verify public listening lab
 
 on:
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: "pages-validation"
+  group: "public-site-publish"
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build-publish-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -47,36 +42,45 @@ jobs:
       - name: Build production demo
         run: npm run build
 
-      - name: Prevent Jekyll processing
-        run: touch demo/dist/.nojekyll
+      - name: Publish static site branch
+        id: publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd demo/dist
+          touch .nojekyll
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b public-site
+          git add --all
+          git commit -m "Publish listening lab from ${GITHUB_SHA}"
+          site_sha="$(git rev-parse HEAD)"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin public-site
+          echo "site_sha=${site_sha}" >> "$GITHUB_OUTPUT"
+          echo "raw_url=https://raw.githack.com/${GITHUB_REPOSITORY}/${site_sha}/index.html" >> "$GITHUB_OUTPUT"
+          echo "cdn_url=https://cdn.jsdelivr.net/gh/${GITHUB_REPOSITORY}@${site_sha}/index.html" >> "$GITHUB_OUTPUT"
 
-      - name: Configure and enable Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: demo/dist
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
-
-      - name: Verify public page
+      - name: Verify public Safari resources
         shell: bash
         run: |
-          url="${{ steps.deployment.outputs.page_url }}"
-          for attempt in {1..24}; do
+          set -euo pipefail
+          url="${{ steps.publish.outputs.raw_url }}"
+          base="${url%/index.html}"
+          for attempt in {1..36}; do
             if html="$(curl --fail --silent --show-error --location "$url")"; then
               grep -q "Aaja Audio Game Engine" <<<"$html"
-              curl --fail --silent --show-error --location "${url%/}/src/feature-tour-ui.js" >/dev/null
-              curl --fail --silent --show-error --location "${url%/}/engine/wasm/audio_game_core_bg.wasm" >/dev/null
-              echo "Live page verified: $url"
+              curl --fail --silent --show-error --location "$base/src/feature-tour-ui.js" >/dev/null
+              curl --fail --silent --show-error --location "$base/engine/index.js" >/dev/null
+              curl --fail --silent --show-error --location "$base/engine/wasm/audio_game_core_bg.wasm" >/dev/null
+              echo "PUBLIC_URL=$url"
+              echo "CDN_URL=${{ steps.publish.outputs.cdn_url }}"
               exit 0
             fi
             sleep 5
           done
-          echo "Published page did not become reachable: $url"
+          echo "Public site did not become reachable: $url"
           exit 1
