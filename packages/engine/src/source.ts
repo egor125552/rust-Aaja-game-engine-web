@@ -28,6 +28,7 @@ export interface SourceHost {
   readonly core: CoreBridge;
   readonly diagnostics: Diagnostics;
   readonly quality: SpatialQuality;
+  resume(): Promise<void>;
   sourceStarted(source: BaseSoundHandle): void;
   sourceStopped(source: BaseSoundHandle): void;
   sourceDisposed(source: BaseSoundHandle): void;
@@ -311,7 +312,7 @@ export class BufferSoundHandle extends BaseSoundHandle {
   async play(): Promise<void> {
     if (this.isDisposed) throw new Error(`Sound source ${this.id} has been disposed`);
     if (this.state === "playing") return;
-    await this.host.context.resume();
+    await this.host.resume();
     const targetVolume = this.currentVolume;
     if (this.#fadeInMs > 0) this.rampOutput(0, 0);
     this.#startNode(this.#offset);
@@ -472,7 +473,7 @@ export class StreamSoundHandle extends BaseSoundHandle {
     if (this.state === "playing") return;
     const element = this.#element;
     if (!element) throw new Error(`Streaming backend for ${this.id} is unavailable`);
-    await this.host.context.resume();
+    await this.host.resume();
     const targetVolume = this.currentVolume;
     if (this.#fadeInMs > 0) this.rampOutput(0, 0);
     try {
