@@ -37,3 +37,15 @@ test("listening lab exposes real sounds and copies assets to production", async 
   const copyScript = await readFile("scripts/copy-demo.mjs", "utf8");
   assert.match(copyScript, /demo\/assets/);
 });
+
+test("real-audio integration fragments are not duplicated", async () => {
+  const main = await readFile("demo/src/main.js", "utf8");
+  assert.equal((main.match(/from "\.\/sample-library\.js"/g) ?? []).length, 1);
+
+  const tourUi = await readFile("demo/src/feature-tour-ui.js", "utf8");
+  assert.equal((tourUi.match(/function updateSampleDescription/g) ?? []).length, 1);
+  assert.equal((tourUi.match(/sampleSelect\.addEventListener/g) ?? []).length, 1);
+
+  const copyScript = await readFile("scripts/copy-demo.mjs", "utf8");
+  assert.equal((copyScript.match(/demo\/assets/g) ?? []).length, 2);
+});

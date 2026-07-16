@@ -152,22 +152,6 @@ sampleSelect.addEventListener("change", () => {
   updateSampleDescription();
   announce(`Тестовый звук изменён: ${getSelectedSampleLabel()}.`);
 });
-function updateSampleDescription() {
-  sampleDescription.textContent = getSelectedSampleSummary();
-}
-
-sampleSelect.addEventListener("change", () => {
-  updateSampleDescription();
-  announce(`Тестовый звук изменён: ${getSelectedSampleLabel()}.`);
-});
-function updateSampleDescription() {
-  sampleDescription.textContent = getSelectedSampleSummary();
-}
-
-sampleSelect.addEventListener("change", () => {
-  updateSampleDescription();
-  announce(`Тестовый звук изменён: ${getSelectedSampleLabel()}.`);
-});
 levelSelect.addEventListener("change", updateDescription);
 byId("tour-run").addEventListener("click", () => run(runSelected));
 byId("tour-repeat").addEventListener("click", () => run(repeatLast));
