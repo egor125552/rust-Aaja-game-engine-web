@@ -51,6 +51,13 @@ try {
   if (limitedResults.some((result) => result.voiceEvictionEvents !== result.evicted)) {
     throw new Error("Full benchmark eviction totals do not match exact voice.evicted counters");
   }
+  const reportedWarnings = report.results.reduce((sum, result) => sum + result.warnings, 0);
+  if (report.finalSnapshot.diagnosticWarningCount < reportedWarnings) {
+    throw new Error("Diagnostics snapshot truncated cumulative warning totals to the retained event ring");
+  }
+  if (report.finalSnapshot.diagnosticErrorCount !== 0) {
+    throw new Error("Diagnostics snapshot reported cumulative errors");
+  }
   await writeFile(path.join(outputDirectory, "benchmark.json"), JSON.stringify(report, null, 2));
   await writeFile(path.join(outputDirectory, "benchmark.txt"), await page.locator("#report-text").textContent() ?? "");
   console.log(JSON.stringify(report.results.map((result) => ({
