@@ -1,3 +1,7 @@
 # The package.json `files` allowlist controls publication.
-# Keep this file so npm does not reuse the repository-level .gitignore,
-# which intentionally ignores generated dist/ and would drop dist/wasm.
+# Keep explicit unignore rules so npm never reuses the repository-level
+# .gitignore to drop generated release output.
+!dist/
+!dist/**
+!README.md
+!LICENSE
