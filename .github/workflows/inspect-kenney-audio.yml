@@ -1,0 +1,68 @@
+name: Inspect Kenney real-world audio candidates
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/inspect-kenney-audio.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download CC0 Kenney audio packs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p candidates/rpg candidates/impact
+          curl --fail --location --retry 3 \
+            "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip" \
+            -o rpg.zip
+          curl --fail --location --retry 3 \
+            "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip" \
+            -o impact.zip
+          unzip -q rpg.zip -d candidates/rpg
+          unzip -q impact.zip -d candidates/impact
+
+      - name: Build candidate manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "# Candidate names"
+            find candidates -type f | sort
+            echo
+            echo "# Door, wood, footstep and impact candidates"
+            find candidates -type f | grep -Ei 'door|wood|foot|step|impact|hit|knock|thud|slam' | sort || true
+            echo
+            echo "# Audio metadata"
+            while IFS= read -r file; do
+              duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$file" 2>/dev/null || true)"
+              printf '%s\t%s\n' "$duration" "$file"
+            done < <(find candidates -type f | grep -Ei '\.(wav|ogg|mp3)$' | sort)
+          } > candidates/manifest.txt
+          cat candidates/manifest.txt
+
+      - name: Keep likely listening candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p selected
+          while IFS= read -r file; do
+            cp --parents "$file" selected/
+          done < <(find candidates -type f | grep -Ei 'door|wood|foot|step|impact|hit|knock|thud|slam' | head -n 40 || true)
+          cp candidates/manifest.txt selected/
+
+      - name: Upload candidates
+        uses: actions/upload-artifact@v4
+        with:
+          name: kenney-audio-candidates
+          path: selected
+          if-no-files-found: error
