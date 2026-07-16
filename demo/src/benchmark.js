@@ -21,13 +21,16 @@ const phase = byId("phase");
 const status = byId("status");
 const exportJsonButton = byId("export-json");
 const exportTextButton = byId("export-text");
+const runControls = [byId("enable"), byId("run-selected"), byId("run-smoke"), byId("run-matrix")];
 
 let engine;
 let engineVoiceLimit = 0;
+let engineQueue = Promise.resolve();
 let generation = 0;
 let liveSources = [];
 let movementTimer;
 let lastReport;
+let runInProgress = false;
 
 const now = () => performance.now();
 const round = (value) => Math.round(value * 100) / 100;
@@ -70,6 +73,10 @@ const reportError = (error) => {
   announce(`Ошибка benchmark: ${error instanceof Error ? error.message : String(error)}`);
 };
 
+function setRunControlsDisabled(disabled) {
+  for (const control of runControls) control.disabled = disabled;
+}
+
 function scenarioConfiguration(scenario) {
   return {
     quality: scenario === "equal-static" ? "equal-power" : "hrtf",
@@ -82,24 +89,28 @@ function scenarioConfiguration(scenario) {
   };
 }
 
-async function ensureEngine(voiceLimit) {
-  if (engine && engineVoiceLimit === voiceLimit) {
-    await engine.resume();
+function ensureEngine(voiceLimit) {
+  const operation = engineQueue.then(async () => {
+    if (engine && engineVoiceLimit === voiceLimit) {
+      await engine.resume();
+      return engine;
+    }
+    await cleanupLiveSources(0);
+    if (engine) await engine.close();
+    engine = await AudioGameEngine.start({
+      quality: "hrtf",
+      maxVoices: voiceLimit,
+      autoRecover: true,
+      latencyHint: "interactive",
+    });
+    engineVoiceLimit = voiceLimit;
+    engine.setListenerPosition([0, 0, 0], 0);
+    engine.setListenerOrientation([0, 0, -1], [0, 1, 0], 0);
+    byId("enable").textContent = "Возобновить звук";
     return engine;
-  }
-  await cleanupLiveSources(0);
-  if (engine) await engine.close();
-  engine = await AudioGameEngine.start({
-    quality: "hrtf",
-    maxVoices: voiceLimit,
-    autoRecover: true,
-    latencyHint: "interactive",
   });
-  engineVoiceLimit = voiceLimit;
-  engine.setListenerPosition([0, 0, 0], 0);
-  engine.setListenerOrientation([0, 0, -1], [0, 1, 0], 0);
-  byId("enable").textContent = "Возобновить звук";
-  return engine;
+  engineQueue = operation.then(() => undefined, () => undefined);
+  return operation;
 }
 
 function sourceOptions(index, count, configuration) {
@@ -234,8 +245,15 @@ async function runCycle({
   const startStarted = now();
   await Promise.all(created.map((source) => source.play()));
   const startMs = round(now() - startStarted);
+  if (generation !== expectedGeneration) {
+    await cleanupLiveSources(0);
+    return null;
+  }
   if (configuration.moving) startMovement(created, expectedGeneration);
-  await wait(500, expectedGeneration);
+  if (!await wait(500, expectedGeneration)) {
+    await cleanupLiveSources(0);
+    return null;
+  }
   const during = audio.getDiagnosticsSnapshot();
 
   phase.textContent = `Цикл ${cycle} из ${cycleCount}: массовая остановка.`;
@@ -332,24 +350,30 @@ function aggregateRun(count, scenario, voiceLimit, cycles) {
 }
 
 async function runCounts(counts, cycleCount, scenario) {
-  await cancelRun(false);
-  const expectedGeneration = generation;
-  const voiceLimit = effectiveVoiceLimit(counts, scenario);
-  const audio = await ensureEngine(voiceLimit);
-  const expectedEngine = audio;
-  const runStarted = new Date().toISOString();
-  const results = [];
-  section.setAttribute("aria-busy", "true");
-  progress.max = counts.length * cycleCount;
-  progress.value = 0;
-  announce(`Benchmark запущен: ${counts.join(", ")} источников, циклов на значение: ${cycleCount}, общий лимит: ${voiceLimit}.`);
-
+  if (runInProgress) {
+    announce("Benchmark уже выполняется. Сначала останови текущий прогон.");
+    return;
+  }
+  runInProgress = true;
+  setRunControlsDisabled(true);
   try {
+    await cancelRun(false);
+    const expectedGeneration = generation;
+    const voiceLimit = effectiveVoiceLimit(counts, scenario);
+    const audio = await ensureEngine(voiceLimit);
+    const expectedEngine = audio;
+    const runStarted = new Date().toISOString();
+    const results = [];
+    section.setAttribute("aria-busy", "true");
+    progress.max = counts.length * cycleCount;
+    progress.value = 0;
+    announce(`Benchmark запущен: ${counts.join(", ")} источников, циклов на значение: ${cycleCount}, общий лимит: ${voiceLimit}.`);
+
     for (const count of counts) {
       const cycles = [];
       for (let cycle = 1; cycle <= cycleCount; cycle += 1) {
         if (generation !== expectedGeneration) return;
-        const result = await runCycle({
+        const cycleResult = await runCycle({
           count,
           cycle,
           cycleCount,
@@ -358,8 +382,8 @@ async function runCounts(counts, cycleCount, scenario) {
           expectedGeneration,
           expectedEngine,
         });
-        if (!result) return;
-        cycles.push(result);
+        if (!cycleResult) return;
+        cycles.push(cycleResult);
         progress.value += 1;
       }
       results.push(aggregateRun(count, scenario, voiceLimit, cycles));
@@ -383,9 +407,8 @@ async function runCounts(counts, cycleCount, scenario) {
       requestedCounts: counts,
       results,
       finalSnapshot: snapshot,
-      memoryApiAvailable: performance.memory !== undefined,
-      longTaskApiAvailable: typeof PerformanceObserver !== "undefined"
-        && PerformanceObserver.supportedEntryTypes?.includes("longtask") === true,
+      memoryApiAvailable: results.some((item) => item.cycles.some((cycle) => cycle.memory.before !== "недоступно")),
+      longTaskApiAvailable: results.some((item) => item.cycles.some((cycle) => cycle.longTasks !== "недоступно")),
     };
     globalThis.__aajaBenchmarkLastReport = lastReport;
     renderReport(lastReport);
@@ -395,6 +418,8 @@ async function runCounts(counts, cycleCount, scenario) {
   } finally {
     section.setAttribute("aria-busy", "false");
     await cleanupLiveSources(0);
+    runInProgress = false;
+    setRunControlsDisabled(false);
   }
 }
 
@@ -426,23 +451,23 @@ function reportAsText(report) {
     `Memory API: ${report.memoryApiAvailable ? "доступно" : "недоступно"}`,
     "",
   ];
-  for (const result of report.results) {
+  for (const item of report.results) {
     lines.push(
-      `Источники: ${result.count}`,
-      `Циклов: ${result.cycleCount}`,
-      `Создано объектов суммарно: ${result.createdObjects}`,
-      `Максимально играло: ${result.peakPlaying}`,
-      `Вытеснено: ${result.evicted}`,
-      `События voice.evicted: ${result.voiceEvictionEvents}`,
-      `Среднее создание: ${formatMilliseconds(result.averageTimingsMs.create)}`,
-      `Средний запуск: ${formatMilliseconds(result.averageTimingsMs.start)}`,
-      `Средняя остановка: ${formatMilliseconds(result.averageTimingsMs.stop)}`,
-      `Средняя очистка: ${formatMilliseconds(result.averageTimingsMs.dispose)}`,
-      `Ошибки: ${result.errors}`,
-      `Предупреждения: ${result.warnings}`,
-      `Handles после очистки: ${result.remainingHandles}`,
-      `Ducking после очистки: ${result.remainingDucking}`,
-      `Очистка: ${result.cleanupPassed ? "пройдена" : "не пройдена"}`,
+      `Источники: ${item.count}`,
+      `Циклов: ${item.cycleCount}`,
+      `Создано объектов суммарно: ${item.createdObjects}`,
+      `Максимально играло: ${item.peakPlaying}`,
+      `Вытеснено: ${item.evicted}`,
+      `События voice.evicted: ${item.voiceEvictionEvents}`,
+      `Среднее создание: ${formatMilliseconds(item.averageTimingsMs.create)}`,
+      `Средний запуск: ${formatMilliseconds(item.averageTimingsMs.start)}`,
+      `Средняя остановка: ${formatMilliseconds(item.averageTimingsMs.stop)}`,
+      `Средняя очистка: ${formatMilliseconds(item.averageTimingsMs.dispose)}`,
+      `Ошибки: ${item.errors}`,
+      `Предупреждения: ${item.warnings}`,
+      `Handles после очистки: ${item.remainingHandles}`,
+      `Ducking после очистки: ${item.remainingDucking}`,
+      `Очистка: ${item.cleanupPassed ? "пройдена" : "не пройдена"}`,
       "",
     );
   }
@@ -491,8 +516,13 @@ function download(name, type, content) {
 }
 
 byId("enable").addEventListener("click", () => {
+  const requestGeneration = generation;
   void ensureEngine(requestedVoiceLimit())
-    .then(() => announce("Звук включён. Нагрузочный стенд готов."))
+    .then(() => {
+      if (generation === requestGeneration && !runInProgress) {
+        announce("Звук включён. Нагрузочный стенд готов.");
+      }
+    })
     .catch(reportError);
 });
 
