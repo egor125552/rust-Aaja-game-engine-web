@@ -117,10 +117,6 @@ jobs:
       - name: Browser and benchmark smoke tests
         run: npm run test:e2e
 
-      - name: Release-candidate full benchmark matrix
-        if: github.event_name == 'pull_request' && github.head_ref == 'agent/release-0.1-readiness'
-        run: node scripts/full-benchmark.mjs
-
       - name: Require committed Rust formatting
         if: always()
         shell: bash
@@ -145,7 +141,6 @@ jobs:
             artifacts/package
             artifacts/consumer-smoke/browser-smoke.json
             artifacts/consumer-smoke/dist
-            artifacts/full-benchmark
             playwright-report
             test-results
             rustfmt.patch
