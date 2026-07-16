@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aaja — чистый тест спереди и сзади</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <h1>Чистый тест спереди и сзади</h1>
+    <p><a href="index.html">Вернуться в основной слуховой стенд</a></p>
+    <p>
+      Используется одно и то же реальное закрытие двери на расстоянии 4 метра.
+      Помещение выключено, заглушение равно нулю. Стандартная браузерная HRTF
+      не гарантирует уверенное различение спереди и сзади для каждого слушателя.
+    </p>
+
+    <button id="enable" class="primary">Включить или возобновить звук</button>
+
+    <section aria-labelledby="settings-title">
+      <h2 id="settings-title">Настройки</h2>
+      <p>
+        <label for="quality">Пространственный режим</label>
+        <select id="quality">
+          <option value="hrtf" selected>HRTF</option>
+          <option value="equal-power">Equal-power для сравнения</option>
+        </select>
+      </p>
+      <p id="settings-summary">Сухая сцена, HRTF, 4 метра, одинаковая громкость.</p>
+    </section>
+
+    <section aria-labelledby="tests-title">
+      <h2 id="tests-title">Последовательности</h2>
+      <div class="controls">
+        <button id="run-front-back" class="primary">Спереди, сзади, спереди, сзади</button>
+        <button id="run-circle">Круг из восьми углов</button>
+        <button id="run-ab">Сравнить HRTF и equal-power</button>
+        <button id="repeat" disabled>Немедленно повторить последний тест</button>
+        <button id="stop" class="danger-inline">Остановить тест</button>
+      </div>
+      <p id="step" aria-live="off">Тест ещё не запущен.</p>
+    </section>
+
+    <section aria-labelledby="result-title">
+      <h2 id="result-title">Отметить результат</h2>
+      <p>Оценка относится к последней завершённой последовательности.</p>
+      <div class="controls">
+        <button data-rating="уверенно">Различается уверенно</button>
+        <button data-rating="слабо">Различается слабо</button>
+        <button data-rating="не различается">Не различается</button>
+      </div>
+      <p id="result">Оценка ещё не выбрана.</p>
+    </section>
+
+    <section aria-labelledby="state-title">
+      <h2 id="state-title">Техническое состояние</h2>
+      <dl>
+        <dt>AudioContext</dt><dd id="context-state">не создан</dd>
+        <dt>Режим</dt><dd id="quality-state">HRTF</dd>
+        <dt>Помещение</dt><dd id="room-state">dry</dd>
+        <dt>Активные источники</dt><dd id="active-state">0</dd>
+        <dt>Зарегистрированные handles</dt><dd id="handles-state">0</dd>
+      </dl>
+    </section>
+
+    <p id="status" role="status" aria-live="polite" aria-atomic="true">Звук ещё не включён.</p>
+  </main>
+
+  <script type="importmap">
+    {"imports":{"@aaja/audio-game-engine":"./engine/index.js"}}
+  </script>
+  <script type="module" src="src/front-back-test.js"></script>
+</body>
+</html>
