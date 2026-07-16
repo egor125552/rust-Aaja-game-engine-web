@@ -9,6 +9,10 @@ Both source packs are published under Creative Commons CC0 1.0. Copies of the pa
 
 The browser files are PCM16, mono, 48 kHz WAV. Processing is limited to decoding, mono conversion, resampling, and insertion of silence between unmodified footstep events. The synthetic earcon remains available only as a diagnostic control.
 
+The native `Тестовый звук` select is keyboard- and screen-reader-accessible. Wooden footsteps are the default for movement and distance tests. The door transient is useful for room reverb, occlusion, front/rear placement, and comparing a single event at different distances.
+
+Contract tests validate the WAV headers, production asset copying, selector markup, and that integration fragments appear exactly once.
+
 Source pages:
 
 - https://kenney.nl/assets/rpg-audio
