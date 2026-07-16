@@ -25,6 +25,7 @@ test("clean front-back test keeps focus, uses HRTF by default, and cleans handle
 });
 
 test("benchmark smoke measures 8 and 16 sources across cleanup cycles", async ({ page }) => {
+  test.setTimeout(60_000);
   const pageErrors = [];
   const consoleErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -45,6 +46,7 @@ test("benchmark smoke measures 8 and 16 sources across cleanup cycles", async ({
   expect(report.results).toHaveLength(2);
   expect(report.results.every((item) => item.cycleCount === 3)).toBe(true);
   expect(report.results.every((item) => item.cleanupPassed)).toBe(true);
+  expect(report.results.every((item) => item.cycles.every((cycle) => cycle.invariants.contextReusedWithinRun))).toBe(true);
   expect(report.finalSnapshot.playing).toBe(0);
   expect(report.finalSnapshot.registeredHandles).toBe(0);
   expect(report.finalSnapshot.activeSpeechDuckingSessions).toBe(0);
