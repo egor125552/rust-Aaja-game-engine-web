@@ -74,19 +74,22 @@ jobs:
             test "$(dd if="$file" bs=1 skip=8 count=4 status=none)" = "WAVE"
           done
 
-      - name: Commit assets to feature branch
+      - name: Finalize accessible listening lab
+        run: python3 scripts/finalize-real-audio-lab.py
+
+      - name: Commit finalized lab to feature branch
         shell: bash
         run: |
           set -euo pipefail
           rm -rf .audio-work
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f demo/assets/audio
+          git add -A -f demo/assets/audio
           if git diff --cached --quiet; then
-            echo "Audio assets already materialized."
+            echo "Real-audio listening lab is already finalized."
             exit 0
           fi
-          git commit -m "Add real Foley reference sounds"
+          git commit -m "Use real Foley sounds in listening lab"
           git fetch origin feature/real-world-audio-tests
           git rebase origin/feature/real-world-audio-tests
           git push origin HEAD:feature/real-world-audio-tests
