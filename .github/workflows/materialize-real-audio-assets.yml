@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
 
+# This workflow writes only vetted CC0 audio derivatives to the dedicated feature branch.
 jobs:
   materialize:
     runs-on: ubuntu-latest
