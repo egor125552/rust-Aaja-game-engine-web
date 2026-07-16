@@ -48,6 +48,13 @@ function requestedVoiceLimit() {
   return clampInteger(voiceLimitInput.value, 1, SAFE_MAX_SOURCES, SAFE_MAX_SOURCES);
 }
 
+function effectiveVoiceLimit(counts, scenario) {
+  const requested = requestedVoiceLimit();
+  if (scenario !== "total-limit") return requested;
+  const smallestCount = Math.min(...counts);
+  return Math.min(requested, Math.max(1, Math.floor(smallestCount / 2)));
+}
+
 function requestedCycles() {
   const minimum = scenarioSelect.value === "cleanup-cycles" ? 5 : 1;
   return clampInteger(cyclesInput.value, minimum, 10, Math.max(5, minimum));
@@ -71,7 +78,6 @@ function scenarioConfiguration(scenario) {
     moving: scenario === "hrtf-moving",
     multipleCategories: scenario === "categories",
     ducking: scenario === "ducking",
-    totalLimit: scenario === "total-limit",
     categoryLimit: scenario === "category-limit",
   };
 }
@@ -159,7 +165,12 @@ function startLongTaskObserver() {
   const observer = new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) entries.push(round(entry.duration));
   });
-  observer.observe({ type: "longtask", buffered: false });
+  try {
+    observer.observe({ type: "longtask", buffered: false });
+  } catch {
+    observer.disconnect();
+    return { supported: false, entries: [], stop() {} };
+  }
   return {
     supported: true,
     entries,
@@ -182,9 +193,17 @@ async function wait(milliseconds, expectedGeneration) {
   return generation === expectedGeneration;
 }
 
-async function runCycle({ count, cycle, cycleCount, scenario, voiceLimit, expectedGeneration }) {
+async function runCycle({
+  count,
+  cycle,
+  cycleCount,
+  scenario,
+  voiceLimit,
+  expectedGeneration,
+  expectedEngine,
+}) {
   const audio = await ensureEngine(voiceLimit);
-  const sameEngine = audio === engine;
+  const sameEngine = audio === expectedEngine;
   const configuration = scenarioConfiguration(scenario);
   audio.setQuality(configuration.quality);
   audio.setRoom(configuration.room, 0);
@@ -315,14 +334,15 @@ function aggregateRun(count, scenario, voiceLimit, cycles) {
 async function runCounts(counts, cycleCount, scenario) {
   await cancelRun(false);
   const expectedGeneration = generation;
-  const voiceLimit = requestedVoiceLimit();
+  const voiceLimit = effectiveVoiceLimit(counts, scenario);
   const audio = await ensureEngine(voiceLimit);
+  const expectedEngine = audio;
   const runStarted = new Date().toISOString();
   const results = [];
   section.setAttribute("aria-busy", "true");
   progress.max = counts.length * cycleCount;
   progress.value = 0;
-  announce(`Benchmark запущен: ${counts.join(", ")} источников, циклов на значение: ${cycleCount}.`);
+  announce(`Benchmark запущен: ${counts.join(", ")} источников, циклов на значение: ${cycleCount}, общий лимит: ${voiceLimit}.`);
 
   try {
     for (const count of counts) {
@@ -336,6 +356,7 @@ async function runCounts(counts, cycleCount, scenario) {
           scenario,
           voiceLimit,
           expectedGeneration,
+          expectedEngine,
         });
         if (!result) return;
         cycles.push(result);
