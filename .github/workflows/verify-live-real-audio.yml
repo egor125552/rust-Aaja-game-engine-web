@@ -29,14 +29,19 @@ jobs:
         run: |
           set -euo pipefail
           base="https://egor125552.github.io/rust-Aaja-game-engine-web"
-          for attempt in {1..36}; do
-            if html="$(curl --fail --silent --show-error --location "$base/")" \
+          for attempt in {1..48}; do
+            stamp="$(date +%s%N)"
+            if html="$(curl --fail --silent --show-error --location -H 'Cache-Control: no-cache' "$base/?verify=$stamp")" \
               && grep -q 'id="sample-source"' <<<"$html" \
-              && curl --fail --silent --show-error --location "$base/assets/audio/door-close.wav" -o door-close.wav \
-              && curl --fail --silent --show-error --location "$base/assets/audio/wood-footsteps-loop.wav" -o wood-footsteps-loop.wav \
+              && main="$(curl --fail --silent --show-error --location -H 'Cache-Control: no-cache' "$base/src/main.js?verify=$stamp")" \
+              && grep -q 'sample-library.js' <<<"$main" \
+              && tour="$(curl --fail --silent --show-error --location -H 'Cache-Control: no-cache' "$base/src/feature-tour-ui.js?verify=$stamp")" \
+              && grep -q 'getSelectedSampleUrl' <<<"$tour" \
+              && curl --fail --silent --show-error --location -H 'Cache-Control: no-cache' "$base/assets/audio/door-close.wav?verify=$stamp" -o door-close.wav \
+              && curl --fail --silent --show-error --location -H 'Cache-Control: no-cache' "$base/assets/audio/wood-footsteps-loop.wav?verify=$stamp" -o wood-footsteps-loop.wav \
               && [[ "$(head -c 4 door-close.wav)" == "RIFF" ]] \
               && [[ "$(head -c 4 wood-footsteps-loop.wav)" == "RIFF" ]]; then
-              echo "Updated Pages resources are live."
+              echo "Updated HTML, JavaScript, and WAV resources are live."
               exit 0
             fi
             sleep 5
@@ -54,22 +59,37 @@ jobs:
           import { webkit } from "@playwright/test";
 
           const browser = await webkit.launch();
-          const page = await browser.newPage();
+          const context = await browser.newContext({
+            extraHTTPHeaders: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+          });
+          const page = await context.newPage();
           const errors = [];
           page.on("pageerror", (error) => errors.push(error.message));
           page.on("console", (message) => {
             if (message.type() === "error") errors.push(message.text());
           });
 
-          await page.goto("https://egor125552.github.io/rust-Aaja-game-engine-web/", { waitUntil: "networkidle" });
+          const stamp = Date.now();
+          await page.goto(`https://egor125552.github.io/rust-Aaja-game-engine-web/?verify=${stamp}`, {
+            waitUntil: "networkidle",
+          });
           await page.getByLabel("Тестовый звук").selectOption("door");
           await page.getByRole("button", { name: "Включить звук" }).click();
-          await page.locator("#core-version").waitFor({ state: "visible" });
+          await page.waitForFunction(() => {
+            const value = document.querySelector("#core-version")?.textContent?.trim();
+            return Boolean(value && value !== "не загружено");
+          });
+
+          const doorRequest = page.waitForResponse((response) => (
+            response.url().includes("/assets/audio/door-close.wav") && response.status() === 200
+          ));
           await page.getByRole("button", { name: "Спереди — 2" }).click();
-          await page.locator("#status").filter({ hasText: "закрытие двери" }).waitFor();
+          await doorRequest;
+          await page.waitForFunction(() => (
+            document.querySelector("#status")?.textContent?.includes("закрытие двери")
+          ));
 
           const coreVersion = (await page.locator("#core-version").textContent())?.trim();
-          if (!coreVersion || coreVersion === "не загружено") throw new Error("Rust/WASM core did not initialize");
           if (errors.length) throw new Error(`Public WebKit errors: ${errors.join(" | ")}`);
           console.log(`Live WebKit verification passed with core ${coreVersion}`);
           await browser.close();
