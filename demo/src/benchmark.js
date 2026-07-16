@@ -73,8 +73,11 @@ const reportError = (error) => {
   announce(`Ошибка benchmark: ${error instanceof Error ? error.message : String(error)}`);
 };
 
-function setRunControlsDisabled(disabled) {
-  for (const control of runControls) control.disabled = disabled;
+function setRunControlsBusy(busy) {
+  for (const control of runControls) {
+    if (busy) control.setAttribute("aria-disabled", "true");
+    else control.removeAttribute("aria-disabled");
+  }
 }
 
 function scenarioConfiguration(scenario) {
@@ -355,7 +358,7 @@ async function runCounts(counts, cycleCount, scenario) {
     return;
   }
   runInProgress = true;
-  setRunControlsDisabled(true);
+  setRunControlsBusy(true);
   try {
     await cancelRun(false);
     const expectedGeneration = generation;
@@ -419,7 +422,7 @@ async function runCounts(counts, cycleCount, scenario) {
     section.setAttribute("aria-busy", "false");
     await cleanupLiveSources(0);
     runInProgress = false;
-    setRunControlsDisabled(false);
+    setRunControlsBusy(false);
   }
 }
 
@@ -516,6 +519,10 @@ function download(name, type, content) {
 }
 
 byId("enable").addEventListener("click", () => {
+  if (runInProgress) {
+    announce("Benchmark уже выполняется. Кнопка включения не меняет движок до завершения прогона.");
+    return;
+  }
   const requestGeneration = generation;
   void ensureEngine(requestedVoiceLimit())
     .then(() => {
