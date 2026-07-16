@@ -1,21 +1,24 @@
 name: Materialize real audio assets
 
 on:
-  push:
-    paths:
-      - ".github/workflows/materialize-real-audio-assets.yml"
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
   contents: write
 
-# This workflow writes only vetted CC0 audio derivatives to the dedicated feature branch.
 jobs:
   materialize:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'feature/real-world-audio-tests')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout feature branch
+      - name: Checkout fixed same-repository feature branch
         uses: actions/checkout@v4
         with:
           ref: feature/real-world-audio-tests
