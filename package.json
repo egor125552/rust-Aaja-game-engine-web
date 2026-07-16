@@ -28,7 +28,7 @@
     "test:consumer-browser": "node scripts/consumer-browser-smoke.mjs",
     "typecheck:engine": "tsc -p packages/engine/tsconfig.json --noEmit",
     "typecheck:examples": "tsc -p tsconfig.examples.json",
-    "test:syntax": "node --check demo/src/main.js && node --check demo/src/feature-tour.js && node --check demo/src/test-earcon.js && node --check demo/src/sample-library.js && node --check demo/src/feature-tour-ui.js && node --check demo/src/front-back-test.js && node --check demo/src/benchmark.js && node --check scripts/package-smoke.mjs && node --check scripts/consumer-browser-smoke.mjs && node --check tests/e2e/demo.spec.mjs && node --check tests/e2e/lifecycle.spec.mjs && node --check tests/e2e/front-back-benchmark.spec.mjs"
+    "test:syntax": "node --check demo/src/main.js && node --check demo/src/feature-tour.js && node --check demo/src/test-earcon.js && node --check demo/src/sample-library.js && node --check demo/src/feature-tour-ui.js && node --check demo/src/front-back-test.js && node --check demo/src/benchmark.js && node --check scripts/package-smoke.mjs && node --check scripts/consumer-browser-smoke.mjs && node --check scripts/full-benchmark.mjs && node --check tests/e2e/demo.spec.mjs && node --check tests/e2e/lifecycle.spec.mjs && node --check tests/e2e/front-back-benchmark.spec.mjs"
   },
   "engines": {
     "node": ">=20"
