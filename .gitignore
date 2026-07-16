@@ -1,5 +1,8 @@
 node_modules/
 .tmp/
+artifacts/
+playwright-report/
+test-results/
 demo/dist/
 packages/engine/dist/
 packages/engine/wasm-pkg/
