@@ -33,7 +33,7 @@ Room path:
 - `source`: replayable buffer and streaming source lifecycles and node cleanup.
 - `room`: procedural impulse generation and shared room bus.
 - `mixer`: categories, per-category settings, and speech ducking.
-- `diagnostics`: bounded event ring.
+- `diagnostics`: bounded recent-event ring plus cumulative counters by level and event code.
 - `engine`: singleton lifecycle, immutable diagnostics snapshot, and public façade.
 
 ### Demo and validation
@@ -49,7 +49,7 @@ Rust is authoritative for normalized positions, source priority/category/activit
 
 A stopped handle remains reusable by design. Call `dispose()` when the game no longer needs to restart that source. Natural one-shot nodes disconnect automatically; the listening tools also dispose temporary handles.
 
-`getDiagnosticsSnapshot()` copies counters and current scalar state. It never returns the internal maps, sets, audio nodes, buffers, media elements, or Rust objects. Registered handles and cached decoded assets are separate counts because a healthy cache can outlive every handle.
+`getDiagnosticsSnapshot()` copies cumulative diagnostic totals and current scalar state. It never returns the internal maps, sets, audio nodes, buffers, media elements, or Rust objects. Registered handles and cached decoded assets are separate counts because a healthy cache can outlive every handle.
 
 ## Quality modes
 
