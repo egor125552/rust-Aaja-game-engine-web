@@ -4,7 +4,7 @@ These numbers describe one automated release-candidate run. They are not physica
 
 ## Environment
 
-- Commit under test: `cbebf5403fb76ae183e2fb9de4ce726f91be998d`.
+- Commit under test: `4a055e0b5f85f304a73e0990209ec5038a9cf9af`.
 - Runner: GitHub-hosted Linux runner.
 - Browser: Headless Chrome `149.0.7827.55`.
 - User agent: `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/149.0.7827.55 Safari/537.36`.
@@ -19,11 +19,11 @@ These numbers describe one automated release-candidate run. They are not physica
 
 | Requested sources | Objects created across 5 cycles | Peak playing | Evicted | `voice.evicted` events | Average create | Average start | Average stop | Average dispose |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 8 | 40 | 8 | 0 | 0 | 3.80 ms | 0.32 ms | 20.42 ms | 0.14 ms |
-| 16 | 80 | 16 | 0 | 0 | 3.02 ms | 0.36 ms | 20.40 ms | 0.12 ms |
-| 32 | 160 | 32 | 0 | 0 | 6.20 ms | 0.80 ms | 20.50 ms | 0.14 ms |
-| 64 | 320 | 32 | 160 | 160 | 12.56 ms | 2.24 ms | 20.58 ms | 0.36 ms |
-| 128 | 640 | 32 | 480 | 480 | 23.64 ms | 4.42 ms | 20.54 ms | 0.64 ms |
+| 8 | 40 | 8 | 0 | 0 | 4.44 ms | 0.40 ms | 20.48 ms | 0.16 ms |
+| 16 | 80 | 16 | 0 | 0 | 2.82 ms | 0.38 ms | 20.44 ms | 0.14 ms |
+| 32 | 160 | 32 | 0 | 0 | 5.86 ms | 0.88 ms | 20.56 ms | 0.20 ms |
+| 64 | 320 | 32 | 160 | 160 | 12.26 ms | 2.32 ms | 20.56 ms | 0.34 ms |
+| 128 | 640 | 32 | 480 | 480 | 24.08 ms | 5.86 ms | 20.56 ms | 0.72 ms |
 
 Eviction totals are aggregated across all five cycles. For example, each 128-source cycle requested 128 voices while the limit was 32, so 96 voices were evicted per cycle and 480 across five cycles.
 
@@ -46,7 +46,10 @@ The final snapshot contained:
 - active ducking sessions: `0`;
 - cached decoded assets: `1`, intentionally retained for reuse;
 - cumulative evictions: `640`;
-- diagnostic errors: `0`.
+- cumulative diagnostic warnings: `640`;
+- cumulative diagnostic errors: `0`.
+
+The detailed diagnostic event ring remained bounded at 200 recent events. Exact benchmark totals did not depend on that ring: per-cycle reports used cumulative counter deltas, and the final snapshot exposed the same cumulative totals. The full workflow explicitly failed on an eviction/event mismatch, a truncated snapshot warning total, or any diagnostic error.
 
 ## Long tasks and memory
 
@@ -54,6 +57,8 @@ The Long Task API was available and reported zero long tasks in every cycle.
 
 `performance.memory` was exposed, but Headless Chrome returned coarse, constant values of 10,000,000 bytes before and after every cycle. This is recorded as browser-provided information, not treated as precise proof of memory usage or absence of native/Web Audio allocations. Physical-device memory profiling remains external.
 
-## Reporting bug found during the run
+## Reporting bugs found during release readiness
 
-The first full run correctly counted 480 evictions at 128 requested sources but retained only the last 37 `voice.evicted` events because the diagnostic ring was too small for the supported matrix. The release candidate now keeps cumulative diagnostic counters and a retained window large enough for the complete supported benchmark. A regression test verifies cumulative counts beyond a deliberately tiny ring. The corrected run reports 480 evictions and 480 matching events.
+The first full run counted 480 evictions at 128 requested sources but derived `voice.evicted` from a bounded recent-event ring, which lost older detailed events. Cumulative counters by diagnostic level and event code were added, and the benchmark was changed to use counter deltas.
+
+A later run exposed a second inconsistency: `Diagnostics.warningCount` was cumulative, but `getDiagnosticsSnapshot().diagnosticWarningCount` still recomputed only the retained ring. The snapshot now reads cumulative counters directly. Regression tests and the full workflow cover both failure modes.
