@@ -1,0 +1,50 @@
+name: Full audio benchmark
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure stable Rust
+        shell: bash
+        run: |
+          rustup set profile minimal
+          rustup toolchain install stable --no-self-update
+          rustup default stable
+          rustup target add wasm32-unknown-unknown
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked --version 0.15.0
+
+      - name: Build production engine and listening lab
+        run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run five-cycle matrix through 8, 16, 32, 64, and 128 sources
+        run: node scripts/full-benchmark.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aaja-full-benchmark-${{ github.run_attempt }}
+          path: artifacts/full-benchmark
+          if-no-files-found: error
+          retention-days: 30
