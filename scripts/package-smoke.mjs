@@ -56,6 +56,7 @@ const tarEntries = run("tar", ["-tf", tarballPath]).split(/\r?\n/u).filter(Boole
 const requiredEntries = [
   "package/package.json",
   "package/README.md",
+  "package/LICENSE",
   "package/dist/index.js",
   "package/dist/index.d.ts",
   "package/dist/wasm/audio_game_core.js",
@@ -129,9 +130,10 @@ button.addEventListener("click", () => {
     await audio.stopAll(0);
     cue.dispose();
     const after = audio.getDiagnosticsSnapshot();
+    const coreVersion = audio.coreVersion;
     await audio.close();
     (window as unknown as { __aajaConsumerSmoke: unknown }).__aajaConsumerSmoke = {
-      coreVersion: audio.coreVersion,
+      coreVersion,
       during,
       after,
     };
@@ -188,6 +190,9 @@ const installedFiles = await listFiles(installedDirectory);
 const builtFiles = await listFiles(path.join(consumerDirectory, "dist"));
 if (!installedFiles.includes("dist/wasm/audio_game_core_bg.wasm")) {
   throw new Error("Installed tarball does not contain the WASM binary");
+}
+if (!installedFiles.includes("LICENSE")) {
+  throw new Error("Installed tarball does not contain the MIT license text");
 }
 if (!builtFiles.some((file) => file.endsWith(".wasm"))) {
   throw new Error("Vite production build did not emit a WASM asset");
