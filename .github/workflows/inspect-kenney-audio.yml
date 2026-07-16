@@ -31,38 +31,50 @@ jobs:
           unzip -q rpg.zip -d candidates/rpg
           unzip -q impact.zip -d candidates/impact
 
-      - name: Build candidate manifest
+      - name: Convert exact candidates to iPhone-safe WAV
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v ffmpeg
+          command -v ffprobe
+          mkdir -p selected/door selected/steps selected/impact
+
+          for source in candidates/rpg/Audio/doorClose_{1,2,3,4}.ogg; do
+            name="$(basename "${source%.ogg}")"
+            ffmpeg -v error -y -i "$source" -ac 1 -ar 48000 -c:a pcm_s16le "selected/door/${name}.wav"
+          done
+
+          for source in candidates/impact/Audio/footstep_wood_{000,001,002,003,004}.ogg; do
+            name="$(basename "${source%.ogg}")"
+            ffmpeg -v error -y -i "$source" -ac 1 -ar 48000 -c:a pcm_s16le "selected/steps/${name}.wav"
+          done
+
+          for source in candidates/impact/Audio/impactWood_{heavy_000,heavy_004,medium_002,medium_004}.ogg; do
+            name="$(basename "${source%.ogg}")"
+            ffmpeg -v error -y -i "$source" -ac 1 -ar 48000 -c:a pcm_s16le "selected/impact/${name}.wav"
+          done
+
+          cp candidates/rpg/License.txt selected/KENNEY_RPG_AUDIO_LICENSE.txt
+          cp candidates/impact/License.txt selected/KENNEY_IMPACT_SOUNDS_LICENSE.txt
+
+      - name: Record duration, loudness and peak
         shell: bash
         run: |
           set -euo pipefail
           {
-            echo "# Candidate names"
-            find candidates -type f | sort
-            echo
-            echo "# Door, wood, footstep and impact candidates"
-            find candidates -type f | grep -Ei 'door|wood|foot|step|impact|hit|knock|thud|slam' | sort || true
-            echo
-            echo "# Audio metadata"
+            echo -e "duration_seconds\tpeak_db\tmean_volume_db\tfile"
             while IFS= read -r file; do
-              duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$file" 2>/dev/null || true)"
-              printf '%s\t%s\n' "$duration" "$file"
-            done < <(find candidates -type f | grep -Ei '\.(wav|ogg|mp3)$' | sort)
-          } > candidates/manifest.txt
-          cat candidates/manifest.txt
+              duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$file")"
+              stats="$(ffmpeg -hide_banner -i "$file" -af volumedetect -f null - 2>&1)"
+              peak="$(sed -n 's/.*max_volume: \([^ ]*\) dB.*/\1/p' <<<"$stats" | tail -n 1)"
+              mean="$(sed -n 's/.*mean_volume: \([^ ]*\) dB.*/\1/p' <<<"$stats" | tail -n 1)"
+              printf '%s\t%s\t%s\t%s\n' "$duration" "$peak" "$mean" "$file"
+            done < <(find selected -type f -name '*.wav' | sort)
+          } | tee selected/manifest.tsv
 
-      - name: Keep likely listening candidates
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p selected
-          while IFS= read -r file; do
-            cp --parents "$file" selected/
-          done < <(find candidates -type f | grep -Ei 'door|wood|foot|step|impact|hit|knock|thud|slam' | head -n 40 || true)
-          cp candidates/manifest.txt selected/
-
-      - name: Upload candidates
+      - name: Upload exact candidates
         uses: actions/upload-artifact@v4
         with:
-          name: kenney-audio-candidates
+          name: kenney-real-audio-candidates
           path: selected
           if-no-files-found: error
