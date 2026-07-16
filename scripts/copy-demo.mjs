@@ -8,7 +8,9 @@ for (const required of [
 }
 
 await mkdir("demo/dist", { recursive: true });
-await cp("demo/index.html", "demo/dist/index.html");
+for (const page of ["index.html", "front-back.html", "benchmark.html"]) {
+  await cp(`demo/${page}`, `demo/dist/${page}`);
+}
 await cp("demo/styles.css", "demo/dist/styles.css");
 await cp("demo/src", "demo/dist/src", { recursive: true });
 await cp("demo/assets", "demo/dist/assets", { recursive: true });
