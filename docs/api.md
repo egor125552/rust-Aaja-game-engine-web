@@ -85,6 +85,7 @@ Starting a source in `speech` automatically ducks `music` and `environment`. `da
 ```ts
 const snapshot = audio.getDiagnosticsSnapshot();
 console.log(snapshot.registeredHandles, snapshot.playing, snapshot.evictions);
+console.log(audio.diagnostics.count("voice.evicted"));
 ```
 
 The snapshot is a frozen copy. It contains only primitive values:
@@ -94,7 +95,9 @@ The snapshot is a frozen copy. It contains only primitive values:
 - buffer and streaming handle counts;
 - active speech ducking sessions and category bus count;
 - cached asset count and cumulative evictions;
-- counts of retained info, warning, and error diagnostic events.
+- cumulative info, warning, and error diagnostic counts.
+
+`audio.diagnostics.events` is a bounded recent-event window for detailed inspection. `infoCount`, `warningCount`, `errorCount`, and `count(code)` are cumulative and therefore remain exact when older detailed events leave that window. `audio.diagnostics.clear()` resets both the retained window and all cumulative counters.
 
 The snapshot does not expose mutable `AudioNode`, `AudioBuffer`, media element, timer, or Rust objects. A decoded cache entry can remain after every source handle has been disposed; that is intentional reuse, not an active-source leak.
 
