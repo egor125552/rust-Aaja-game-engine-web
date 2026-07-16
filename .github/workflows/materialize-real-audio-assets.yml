@@ -88,4 +88,6 @@ jobs:
             exit 0
           fi
           git commit -m "Add real Foley reference sounds"
+          git fetch origin feature/real-world-audio-tests
+          git rebase origin/feature/real-world-audio-tests
           git push origin HEAD:feature/real-world-audio-tests
