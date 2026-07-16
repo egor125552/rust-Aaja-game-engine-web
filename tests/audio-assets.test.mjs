@@ -47,5 +47,5 @@ test("real-audio integration fragments are not duplicated", async () => {
   assert.equal((tourUi.match(/sampleSelect\.addEventListener/g) ?? []).length, 1);
 
   const copyScript = await readFile("scripts/copy-demo.mjs", "utf8");
-  assert.equal((copyScript.match(/demo\/assets/g) ?? []).length, 2);
+  assert.equal((copyScript.match(/demo\/assets/g) ?? []).length, 1);
 });
