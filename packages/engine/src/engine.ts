@@ -245,14 +245,9 @@ export class AudioGameEngine extends EventTarget {
       }
     }
 
-    let diagnosticInfoCount = 0;
-    let diagnosticWarningCount = 0;
-    let diagnosticErrorCount = 0;
-    for (const event of this.diagnostics.events) {
-      if (event.level === "info") diagnosticInfoCount += 1;
-      else if (event.level === "warning") diagnosticWarningCount += 1;
-      else diagnosticErrorCount += 1;
-    }
+    const diagnosticInfoCount = this.diagnostics.infoCount;
+    const diagnosticWarningCount = this.diagnostics.warningCount;
+    const diagnosticErrorCount = this.diagnostics.errorCount;
 
     return Object.freeze({
       contextState: this.state,
