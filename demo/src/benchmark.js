@@ -226,7 +226,9 @@ async function runCycle({
     maxVoices: configuration.categoryLimit ? Math.min(4, voiceLimit) : Math.min(128, voiceLimit),
   });
 
-  const diagnosticsStart = audio.diagnostics.events.length;
+  const voiceEvictionStart = audio.diagnostics.count("voice.evicted");
+  const warningStart = audio.diagnostics.warningCount;
+  const errorStart = audio.diagnostics.errorCount;
   const before = audio.getDiagnosticsSnapshot();
   const longTasks = startLongTaskObserver();
   const memoryBefore = memorySnapshot();
@@ -278,10 +280,9 @@ async function runCycle({
   const memoryAfter = memorySnapshot();
   longTasks.stop();
 
-  const diagnosticEvents = audio.diagnostics.events.slice(diagnosticsStart);
-  const voiceEvictionEvents = diagnosticEvents.filter((event) => event.code === "voice.evicted").length;
-  const warnings = diagnosticEvents.filter((event) => event.level === "warning").length;
-  const errors = diagnosticEvents.filter((event) => event.level === "error").length;
+  const voiceEvictionEvents = audio.diagnostics.count("voice.evicted") - voiceEvictionStart;
+  const warnings = audio.diagnostics.warningCount - warningStart;
+  const errors = audio.diagnostics.errorCount - errorStart;
   const invariants = {
     playingIsZero: after.playing === 0,
     registeredHandlesIsZero: after.registeredHandles === 0,
