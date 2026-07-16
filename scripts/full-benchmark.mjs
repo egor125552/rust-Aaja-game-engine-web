@@ -41,9 +41,15 @@ try {
   if (report.results.some((result) => !result.cleanupPassed)) {
     throw new Error("At least one full benchmark cleanup cycle failed");
   }
+  if (report.results.some((result) => result.errors !== 0)) {
+    throw new Error("Full benchmark reported diagnostic errors");
+  }
   const limitedResults = report.results.filter((result) => result.count > report.voiceLimit);
   if (limitedResults.length === 0 || limitedResults.some((result) => result.evicted === 0)) {
     throw new Error("Full benchmark did not exercise total voice eviction above the configured limit");
+  }
+  if (limitedResults.some((result) => result.voiceEvictionEvents !== result.evicted)) {
+    throw new Error("Full benchmark eviction totals do not match exact voice.evicted counters");
   }
   await writeFile(path.join(outputDirectory, "benchmark.json"), JSON.stringify(report, null, 2));
   await writeFile(path.join(outputDirectory, "benchmark.txt"), await page.locator("#report-text").textContent() ?? "");
@@ -51,6 +57,7 @@ try {
     count: result.count,
     peakPlaying: result.peakPlaying,
     evicted: result.evicted,
+    voiceEvictionEvents: result.voiceEvictionEvents,
     createMs: result.averageTimingsMs.create,
     disposeMs: result.averageTimingsMs.dispose,
     cleanupPassed: result.cleanupPassed,
