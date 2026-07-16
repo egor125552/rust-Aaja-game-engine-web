@@ -4,6 +4,7 @@ export type {
   BuiltInRoom,
   CategoryOptions,
   DiagnosticEvent,
+  DiagnosticsSnapshot,
   DirectionalConeOptions,
   DistanceModel,
   DistanceOptions,
