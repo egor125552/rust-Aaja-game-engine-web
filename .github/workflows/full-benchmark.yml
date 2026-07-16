@@ -1,6 +1,8 @@
 name: Full audio benchmark
 
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -8,6 +10,7 @@ permissions:
 
 jobs:
   benchmark:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/release-0.1-readiness'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
