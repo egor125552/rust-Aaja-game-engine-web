@@ -1,6 +1,11 @@
 import { AudioGameEngine } from "@aaja/audio-game-engine";
 import { FEATURE_LEVELS, createFeatureTour } from "./feature-tour.js";
-import { createTestEarconUrl, revokeTestEarconUrl } from "./test-earcon.js";
+import {
+  getSelectedSampleLabel,
+  getSelectedSampleSummary,
+  getSelectedSampleUrl,
+  releaseSampleLibrary,
+} from "./sample-library.js";
 
 const byId = (id) => {
   const element = document.getElementById(id);
@@ -14,6 +19,8 @@ const description = byId("tour-description");
 const progressElement = byId("tour-progress");
 const stepText = byId("tour-step");
 const section = byId("feature-tour");
+const sampleSelect = byId("sample-source");
+const sampleDescription = byId("sample-description");
 let engine;
 
 const categoryDefaults = Object.freeze({
@@ -80,7 +87,7 @@ function updateProgress({ running, level, step, total, message }) {
 const tour = createFeatureTour({
   requireEngine,
   announce,
-  createSampleUrl: createTestEarconUrl,
+  createSampleUrl: getSelectedSampleUrl,
   onProgress: updateProgress,
   refreshState: refreshSharedState,
 });
@@ -137,6 +144,14 @@ async function stopTour(message) {
   }
 }
 
+function updateSampleDescription() {
+  sampleDescription.textContent = getSelectedSampleSummary();
+}
+
+sampleSelect.addEventListener("change", () => {
+  updateSampleDescription();
+  announce(`Тестовый звук изменён: ${getSelectedSampleLabel()}.`);
+});
 levelSelect.addEventListener("change", updateDescription);
 byId("tour-run").addEventListener("click", () => run(runSelected));
 byId("tour-repeat").addEventListener("click", () => run(repeatLast));
@@ -164,5 +179,6 @@ document.addEventListener("keydown", (event) => {
   run(action);
 });
 
-window.addEventListener("beforeunload", revokeTestEarconUrl);
+window.addEventListener("beforeunload", releaseSampleLibrary);
+updateSampleDescription();
 updateDescription();

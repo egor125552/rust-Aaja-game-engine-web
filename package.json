@@ -26,7 +26,7 @@
     "test:wasm": "node scripts/verify-wasm.mjs",
     "typecheck:engine": "tsc -p packages/engine/tsconfig.json --noEmit",
     "typecheck:examples": "tsc -p tsconfig.examples.json",
-    "test:syntax": "node --check demo/src/main.js && node --check demo/src/feature-tour.js && node --check demo/src/test-earcon.js && node --check demo/src/feature-tour-ui.js && node --check tests/e2e/demo.spec.mjs && node --check tests/e2e/lifecycle.spec.mjs"
+    "test:syntax": "node --check demo/src/main.js && node --check demo/src/feature-tour.js && node --check demo/src/test-earcon.js && node --check demo/src/sample-library.js && node --check demo/src/feature-tour-ui.js && node --check tests/e2e/demo.spec.mjs && node --check tests/e2e/lifecycle.spec.mjs"
   },
   "engines": {
     "node": ">=20"
