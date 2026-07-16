@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 - 2026-07-15
+## 0.1.0 - Unreleased
 
 - Added Rust/WASM scene core with finite-value validation, versioned room presets, distance attenuation, and deterministic priority/distance-aware voice eviction.
 - Added typed Web Audio façade with one reusable context, asset cache, short and streaming sources, replay/pause/stop/fades, spatial movement, HRTF/equal-power modes, and explicit cleanup.
@@ -16,9 +16,9 @@
 - Added selectable real CC0 Foley references: a wooden-footstep loop for movement and distance tests, a door-close transient for room/occlusion/direction tests, and the original synthetic earcon as an optional control.
 - Recorded the user's real headphone result: playback, left/right HRTF effect, rooms, reverb, simultaneous sources, and primary accessibility worked; front/back remained weak or uncertain; hardware details were not specified.
 - Added a separate dry front/back test using the same real door transient at equal distance and level, with front/rear repetition, eight angles, immediate repeat, ratings, and HRTF/equal-power A/B.
-- Added immutable diagnostics snapshots with registered-handle states, source kinds, ducking, category buses, cache, quality, room, context, and cumulative eviction data.
+- Added immutable diagnostics snapshots with registered-handle states, source kinds, ducking, category buses, cache, quality, room, context, cumulative eviction data, and cumulative diagnostic totals.
 - Added an accessible benchmark for up to 128 requested sources, twelve load/limit/cleanup scenarios, optional Long Task and memory data, and JSON/text export.
-- Added regression checks for repeated create/stop/dispose cycles, zero remaining handles, cleared ducking, idempotent disposal, and voice-limit enforcement.
+- Added regression checks for repeated create/stop/dispose cycles, zero remaining handles, cleared ducking, idempotent disposal, voice-limit enforcement, and exact cumulative diagnostic counts beyond the retained event ring.
 - Fixed installed-package Vite handling by replacing the Vite-ignored runtime WASM URL with a statically discoverable generated-module import.
 - Added `npm pack --dry-run`, real tarball inspection, clean external installation, TypeScript consumer validation, direct browser ESM, Vite production build, emitted-WASM validation, and installed-package Chromium runtime checks.
 - Added a lightweight CI benchmark smoke and a manual full benchmark workflow for 8, 16, 32, 64, and 128 sources.
