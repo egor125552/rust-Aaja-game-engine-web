@@ -1,6 +1,8 @@
 name: Full audio benchmark
 
 on:
+  push:
+    branches: ["agent/release-0.1-readiness"]
   workflow_dispatch:
 
 permissions:
