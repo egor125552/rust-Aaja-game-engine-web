@@ -1,1 +1,1 @@
-Trigger the trusted finalizer after the workflow update.
+Trigger the corrected trusted finalizer.
