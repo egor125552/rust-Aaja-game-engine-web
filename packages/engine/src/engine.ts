@@ -11,6 +11,7 @@ import {
 import type {
   BuiltInRoom,
   CategoryOptions,
+  DiagnosticsSnapshot,
   EngineOptions,
   EngineState,
   PlayOptions,
@@ -75,6 +76,7 @@ export class AudioGameEngine extends EventTarget {
   readonly #recoveryEvents = ["pointerdown", "keydown", "touchend"] as const;
   #quality: SpatialQuality;
   #listenerPosition: Vec3 = [0, 0, 0];
+  #evictionCount = 0;
   #closed = false;
   #onStateChange: () => void;
   #onVisibilityChange: () => void;
@@ -219,6 +221,56 @@ export class AudioGameEngine extends EventTarget {
 
   get cachedAssetCount(): number {
     return this.#assets.size;
+  }
+
+  getDiagnosticsSnapshot(): Readonly<DiagnosticsSnapshot> {
+    let loading = 0;
+    let playing = 0;
+    let paused = 0;
+    let stopped = 0;
+    let error = 0;
+    let bufferSources = 0;
+    let streamingSources = 0;
+
+    for (const source of this.#sources.values()) {
+      if (source instanceof StreamSoundHandle) streamingSources += 1;
+      else if (source instanceof BufferSoundHandle) bufferSources += 1;
+      switch (source.state) {
+        case "loading": loading += 1; break;
+        case "playing": playing += 1; break;
+        case "paused": paused += 1; break;
+        case "stopped": stopped += 1; break;
+        case "error": error += 1; break;
+        default: break;
+      }
+    }
+
+    const diagnosticInfoCount = this.diagnostics.infoCount;
+    const diagnosticWarningCount = this.diagnostics.warningCount;
+    const diagnosticErrorCount = this.diagnostics.errorCount;
+
+    return Object.freeze({
+      contextState: this.state,
+      sampleRate: this.#context.sampleRate,
+      quality: this.#quality,
+      roomPreset: this.#roomController.preset.name,
+      maxVoices: this.#maxVoices,
+      registeredHandles: this.#sources.size,
+      loading,
+      playing,
+      paused,
+      stopped,
+      error,
+      bufferSources,
+      streamingSources,
+      activeSpeechDuckingSessions: this.#mixer.activeDuckingCount,
+      categoryBusCount: this.#mixer.categoryBusCount,
+      cachedAssets: this.#assets.size,
+      evictions: this.#evictionCount,
+      diagnosticInfoCount,
+      diagnosticWarningCount,
+      diagnosticErrorCount,
+    });
   }
 
   async resume(): Promise<void> {
@@ -445,6 +497,7 @@ export class AudioGameEngine extends EventTarget {
         this.#core.setSourceActive(victimId, false);
         continue;
       }
+      this.#evictionCount += 1;
       this.diagnostics.warning(
         "voice.evicted",
         `Evicted source ${victimId} because a voice limit was reached`,

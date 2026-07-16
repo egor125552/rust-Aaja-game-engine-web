@@ -109,6 +109,29 @@ export interface DiagnosticEvent {
   details?: Readonly<Record<string, unknown>>;
 }
 
+export interface DiagnosticsSnapshot {
+  readonly contextState: EngineState;
+  readonly sampleRate: number;
+  readonly quality: SpatialQuality;
+  readonly roomPreset: string;
+  readonly maxVoices: number;
+  readonly registeredHandles: number;
+  readonly loading: number;
+  readonly playing: number;
+  readonly paused: number;
+  readonly stopped: number;
+  readonly error: number;
+  readonly bufferSources: number;
+  readonly streamingSources: number;
+  readonly activeSpeechDuckingSessions: number;
+  readonly categoryBusCount: number;
+  readonly cachedAssets: number;
+  readonly evictions: number;
+  readonly diagnosticInfoCount: number;
+  readonly diagnosticWarningCount: number;
+  readonly diagnosticErrorCount: number;
+}
+
 export interface SoundHandle {
   readonly id: string;
   readonly state: SourceState;

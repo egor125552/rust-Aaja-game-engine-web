@@ -1,0 +1,7 @@
+# The package.json `files` allowlist controls publication.
+# Keep explicit unignore rules so npm never reuses the repository-level
+# .gitignore to drop generated release output.
+!dist/
+!dist/**
+!README.md
+!LICENSE

@@ -35,6 +35,14 @@ export class Mixer {
     for (const [name, options] of Object.entries(DEFAULTS)) this.configure(name, options);
   }
 
+  get categoryBusCount(): number {
+    return this.#buses.size;
+  }
+
+  get activeDuckingCount(): number {
+    return this.#duckingTriggers.size;
+  }
+
   configure(category: SoundCategory, options: CategoryOptions): void {
     const bus = this.#ensure(category);
     if (options.volume !== undefined) bus.volume = clamp01(options.volume);

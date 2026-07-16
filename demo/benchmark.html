@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aaja — доступный нагрузочный стенд</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <h1>Нагрузочный стенд Aaja Audio Engine</h1>
+    <p><a href="index.html">Вернуться в основной слуховой стенд</a></p>
+    <p>
+      Стенд измеряет только то, что браузер реально предоставляет. Если сведения о памяти
+      или long tasks недоступны, в отчёте будет написано «недоступно», а не выдуманное число.
+    </p>
+
+    <button id="enable" class="primary">Включить или возобновить звук</button>
+
+    <section aria-labelledby="config-title">
+      <h2 id="config-title">Параметры</h2>
+      <p>
+        <label for="source-count">Запрошенное количество источников</label>
+        <select id="source-count">
+          <option value="1">1</option>
+          <option value="8" selected>8</option>
+          <option value="16">16</option>
+          <option value="32">32</option>
+          <option value="64">64</option>
+          <option value="128">128</option>
+          <option value="custom">Пользовательское</option>
+        </select>
+      </p>
+      <p>
+        <label for="custom-count">Пользовательское значение, от 1 до 128</label>
+        <input id="custom-count" type="number" min="1" max="128" value="24" disabled>
+      </p>
+      <p>
+        <label for="voice-limit">Общий voice limit движка, от 1 до 128</label>
+        <input id="voice-limit" type="number" min="1" max="128" value="128">
+      </p>
+      <p>
+        <label for="cycles">Количество последовательных циклов создания и очистки</label>
+        <input id="cycles" type="number" min="1" max="10" value="5">
+      </p>
+      <p>
+        <label for="scenario">Сценарий</label>
+        <select id="scenario">
+          <option value="equal-static">Неподвижные источники в equal-power</option>
+          <option value="hrtf-static" selected>Неподвижные источники в HRTF</option>
+          <option value="hrtf-moving">Движущиеся источники в HRTF</option>
+          <option value="hrtf-occlusion">HRTF с окклюзией</option>
+          <option value="hrtf-room">HRTF с комнатой</option>
+          <option value="categories">Несколько категорий</option>
+          <option value="ducking">Speech ducking под нагрузкой</option>
+          <option value="total-limit">Достижение общего voice limit</option>
+          <option value="category-limit">Достижение категорийного voice limit</option>
+          <option value="mass-stop">Массовая остановка</option>
+          <option value="dispose-all">Dispose всех источников</option>
+          <option value="repeat">Повторный запуск того же теста</option>
+          <option value="cleanup-cycles">Не менее пяти циклов создания и очистки</option>
+        </select>
+      </p>
+    </section>
+
+    <section aria-labelledby="run-title" aria-busy="false" id="benchmark-section">
+      <h2 id="run-title">Запуск</h2>
+      <div class="controls">
+        <button id="run-selected" class="primary">Запустить выбранный benchmark</button>
+        <button id="run-smoke">Быстрый smoke: 8 и 16, три цикла</button>
+        <button id="run-matrix">Матрица: 8, 16, 32, 64 и 128</button>
+        <button id="cancel" class="danger-inline">Остановить и очистить</button>
+      </div>
+      <p>
+        <label for="progress">Прогресс</label>
+        <progress id="progress" max="1" value="0"></progress>
+      </p>
+      <p id="phase" aria-live="off">Benchmark ещё не запущен.</p>
+    </section>
+
+    <section aria-labelledby="metrics-title">
+      <h2 id="metrics-title">Последний результат</h2>
+      <dl>
+        <dt>Запрошено</dt><dd id="requested">0</dd>
+        <dt>Создано объектов</dt><dd id="created">0</dd>
+        <dt>Максимально играло</dt><dd id="playing">0</dd>
+        <dt>Общий лимит</dt><dd id="limit">0</dd>
+        <dt>Вытеснено</dt><dd id="evicted">0</dd>
+        <dt>События voice.evicted</dt><dd id="eviction-events">0</dd>
+        <dt>Кэшированные ресурсы</dt><dd id="cached">0</dd>
+        <dt>Создание</dt><dd id="create-time">не запускалось</dd>
+        <dt>Запуск</dt><dd id="start-time">не запускалось</dd>
+        <dt>Остановка</dt><dd id="stop-time">не запускалось</dd>
+        <dt>Очистка</dt><dd id="dispose-time">не запускалось</dd>
+        <dt>Long tasks</dt><dd id="long-tasks">недоступно</dd>
+        <dt>Память</dt><dd id="memory">недоступно</dd>
+        <dt>Ошибки</dt><dd id="errors">0</dd>
+        <dt>Предупреждения</dt><dd id="warnings">0</dd>
+        <dt>Handles после очистки</dt><dd id="remaining">0</dd>
+        <dt>Ducking после очистки</dt><dd id="ducking-remaining">0</dd>
+      </dl>
+      <p id="invariants">Инварианты очистки ещё не проверены.</p>
+    </section>
+
+    <section aria-labelledby="export-title">
+      <h2 id="export-title">Экспорт отчёта</h2>
+      <div class="controls">
+        <button id="export-json" disabled>Скачать JSON</button>
+        <button id="export-text" disabled>Скачать текстовый отчёт</button>
+      </div>
+      <details>
+        <summary>Текст последнего отчёта</summary>
+        <pre id="report-text">Отчёта пока нет.</pre>
+      </details>
+    </section>
+
+    <p id="status" role="status" aria-live="polite" aria-atomic="true">Звук ещё не включён.</p>
+  </main>
+
+  <script type="importmap">
+    {"imports":{"@aaja/audio-game-engine":"./engine/index.js"}}
+  </script>
+  <script type="module" src="src/benchmark.js"></script>
+</body>
+</html>
