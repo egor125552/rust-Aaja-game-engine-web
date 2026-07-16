@@ -74,45 +74,19 @@ jobs:
             test "$(dd if="$file" bs=1 skip=8 count=4 status=none)" = "WAVE"
           done
 
-      - name: Commit assets and capture push result
-        id: push
+      - name: Commit assets to feature branch
         shell: bash
         run: |
-          set -u
+          set -euo pipefail
           rm -rf .audio-work
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f demo/assets/audio
-          git diff --cached --check
           if git diff --cached --quiet; then
-            echo "Audio assets already materialized." | tee push.log
-            echo "status=0" >> "$GITHUB_OUTPUT"
+            echo "Audio assets already materialized."
             exit 0
           fi
           git commit -m "Add real Foley reference sounds"
           git fetch origin feature/real-world-audio-tests
           git rebase origin/feature/real-world-audio-tests
-          set +e
-          git push --verbose origin HEAD:feature/real-world-audio-tests > push.log 2>&1
-          status=$?
-          set -e
-          cat push.log
-          echo "status=$status" >> "$GITHUB_OUTPUT"
-          exit 0
-
-      - name: Upload push diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: audio-materializer-push-diagnostics
-          path: push.log
-          if-no-files-found: warn
-
-      - name: Require successful push
-        shell: bash
-        run: |
-          status="${{ steps.push.outputs.status }}"
-          if [[ "$status" != "0" ]]; then
-            echo "Audio materializer push failed with exit code $status."
-            exit "$status"
-          fi
+          git push origin HEAD:feature/real-world-audio-tests
