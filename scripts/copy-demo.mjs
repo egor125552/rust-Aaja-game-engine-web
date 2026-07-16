@@ -12,4 +12,5 @@ await cp("demo/index.html", "demo/dist/index.html");
 await cp("demo/styles.css", "demo/dist/styles.css");
 await cp("demo/src", "demo/dist/src", { recursive: true });
 await cp("demo/assets", "demo/dist/assets", { recursive: true });
+await cp("demo/assets", "demo/dist/assets", { recursive: true });
 await cp("packages/engine/dist", "demo/dist/engine", { recursive: true });
