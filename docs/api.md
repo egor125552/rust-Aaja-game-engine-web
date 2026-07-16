@@ -55,6 +55,8 @@ audio.setListenerOrientation([0, 0, -1], [0, 1, 0]);
 audio.setQuality("equal-power");
 ```
 
+The default listener faces negative `Z`. Standard browser HRTF does not guarantee confident front/back perception for every listener or device.
+
 ## Rooms
 
 ```ts
@@ -78,6 +80,24 @@ audio.configureCategory("environment", {
 
 Starting a source in `speech` automatically ducks `music` and `environment`. `danger` is not ducked. When a limit is exceeded, Rust chooses the lowest-priority, least-audible, oldest eligible active source deterministically.
 
+## Development diagnostics
+
+```ts
+const snapshot = audio.getDiagnosticsSnapshot();
+console.log(snapshot.registeredHandles, snapshot.playing, snapshot.evictions);
+```
+
+The snapshot is a frozen copy. It contains only primitive values:
+
+- context state, sample rate, quality, room preset, and total voice limit;
+- registered handles and loading/playing/paused/stopped/error counts;
+- buffer and streaming handle counts;
+- active speech ducking sessions and category bus count;
+- cached asset count and cumulative evictions;
+- counts of retained info, warning, and error diagnostic events.
+
+The snapshot does not expose mutable `AudioNode`, `AudioBuffer`, media element, timer, or Rust objects. A decoded cache entry can remain after every source handle has been disposed; that is intentional reuse, not an active-source leak.
+
 ## Cleanup
 
-`stop()` makes a handle reusable. `dispose()` permanently removes its Rust state, listeners, media element, and audio nodes. Use `audio.stopAll()` as an emergency stop and `audio.close()` to destroy the whole engine.
+`stop()` makes a handle reusable. `dispose()` permanently removes its Rust state, listeners, media element, and audio nodes, and is safe to call repeatedly. Use `audio.stopAll()` as an emergency stop and `audio.close()` to destroy the whole engine and remove recovery listeners.
