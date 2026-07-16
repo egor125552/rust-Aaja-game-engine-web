@@ -2,6 +2,8 @@
 
 The benchmark is a separate page at `benchmark.html`; it is not part of the eight-level listening tour.
 
+The corrected release-candidate matrix is recorded in `benchmark-results-2026-07-16.md`.
+
 ## Counts
 
 - Presets: 1, 8, 16, 32, 64, and 128 requested sources.
@@ -29,7 +31,7 @@ The benchmark is a separate page at `benchmark.html`; it is not part of the eigh
 - requested and created source counts;
 - peak playing count;
 - configured total voice limit;
-- cumulative eviction delta and `voice.evicted` events;
+- cumulative eviction delta and exact `voice.evicted` event count;
 - cached assets;
 - create, start, stop, and dispose time;
 - Long Task entries when the browser exposes that API;
@@ -39,6 +41,8 @@ The benchmark is a separate page at `benchmark.html`; it is not part of the eigh
 - cleanup invariants and final remaining handle/ducking counts.
 
 Unavailable browser metrics are written as `недоступно`. The benchmark does not estimate CPU percentage or fabricate memory numbers.
+
+`Diagnostics` retains a bounded recent-event window and also keeps cumulative counters by level and event code. This prevents a high-eviction benchmark from losing the true count when old detailed events leave the retained window.
 
 ## Cleanup invariants
 
@@ -60,9 +64,12 @@ Normal CI runs a three-cycle smoke matrix with 8 and 16 sources in Chromium, Fir
 
 The `Full audio benchmark` workflow is manual (`workflow_dispatch`). It runs five cycles for 8, 16, 32, 64, and 128 requested sources in Chromium and uploads JSON plus plain text. CI timings describe the hosted runner, not a physical iPhone.
 
+The release-candidate run used HRTF, a dry room, zero occlusion, and a total voice limit of 32. It completed all 25 cycles with zero remaining handles, zero remaining ducking sessions, zero errors, and zero reported long tasks. See the dated results document for timings and eviction totals.
+
 ## Accessibility
 
 - Native labels, selects, number inputs, buttons, progress, definition lists, and text output.
 - Focus is not moved after activation.
+- Busy controls use logical guards and `aria-disabled` rather than removing the focused button from keyboard focus.
 - The live status changes only at meaningful phases, not on every source movement.
 - JSON and plain-text downloads contain the same objective measurements.
