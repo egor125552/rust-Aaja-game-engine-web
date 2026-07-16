@@ -1,4 +1,5 @@
 import { AudioGameEngine } from "@aaja/audio-game-engine";
+import { getSelectedSampleLabel, getSelectedSampleUrl, releaseSampleLibrary } from "./sample-library.js";
 
 const byId = (id) => {
   const element = document.getElementById(id);
@@ -129,18 +130,16 @@ function disposeLater(source, milliseconds) {
 
 async function playDirection(name, shouldAnnounce = true) {
   const audio = await requireEngine();
-  const source = await audio.playTone({
-    frequency: directionNotes[name],
-    durationMs: 520,
-    type: "sine",
+  const source = await audio.play(getSelectedSampleUrl(), {
     position: directionPosition(name, 4),
     category: "danger",
     priority: 100,
     occlusion: occlusionValues[occlusionIndex],
     roomAmount: 0.65,
+    volume: 0.9,
   });
-  disposeLater(source, 800);
-  if (shouldAnnounce) announce(`Короткий источник ${directionLabels[name]}.`);
+  disposeLater(source, 1_900);
+  if (shouldAnnounce) announce(`Источник ${directionLabels[name]}: ${getSelectedSampleLabel()}.`);
 }
 
 async function playDirectionSequence() {
@@ -148,22 +147,20 @@ async function playDirectionSequence() {
   announce("Проверка направлений: слева, спереди, справа, сзади.");
   for (const name of ["left", "front", "right", "rear"]) {
     await playDirection(name, false);
-    await delay(720);
+    await delay(1_750);
   }
   announce("Последовательность направлений завершена. Спереди и сзади должны различаться в HRTF-режиме.");
 }
 
 async function playApproach() {
   const audio = await requireEngine();
-  const source = await audio.playTone({
-    frequency: 340,
-    durationMs: 900,
-    type: "triangle",
+  const source = await audio.play(getSelectedSampleUrl(), {
     position: directionPosition("front", 12),
     loop: true,
-    volume: 0.7,
+    volume: 0.75,
     category: "mechanisms",
     occlusion: occlusionValues[occlusionIndex],
+    roomAmount: 0.55,
   });
   source.moveTo(directionPosition("front", 1), 4_000);
   announce("Источник плавно приближается спереди с двенадцати метров до одного.");
@@ -267,14 +264,14 @@ function createWavUrl() {
 
 async function playLoadedFile() {
   const audio = await requireEngine();
-  const source = await audio.play(createWavUrl(), {
+  const source = await audio.play(getSelectedSampleUrl(), {
     position: directionPosition("right", 3),
     category: "ui",
     priority: 80,
     roomAmount: 0.25,
   });
-  disposeLater(source, 1_000);
-  announce("WAV-файл загружен через fetch, декодирован браузером и воспроизведён справа.");
+  disposeLater(source, 2_000);
+  announce(`Файл «${getSelectedSampleLabel()}» загружен, декодирован браузером и воспроизведён справа.`);
 }
 
 async function changeRoom() {
@@ -429,6 +426,7 @@ window.addEventListener("unhandledrejection", (event) => reportError(event.reaso
 window.addEventListener("error", (event) => reportError(event.error ?? event.message));
 window.addEventListener("beforeunload", () => {
   if (generatedWavUrl) URL.revokeObjectURL(generatedWavUrl);
+  releaseSampleLibrary();
   void engine?.close();
 });
 

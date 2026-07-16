@@ -13,3 +13,4 @@
 - Verified a clean optimized WASM build, JS/WASM contract, formatter, Clippy, focused tests, and automated demo smoke checks in Chromium, Firefox, and WebKit.
 - Added an accessible eight-level full-feature listening tour with a deterministic local WAV, all room presets, parallel feature exercise, repeat/stop controls, and focused automated coverage.
 - Fixed a Firefox cancellation race where a source disposed during a pending `AudioContext.resume()` could attempt a late start against an already removed Rust scene entry.
+- Added selectable real CC0 Foley references: a wooden-footstep loop for movement and distance tests, a door-close transient for room/occlusion tests, and the original synthetic earcon as an optional control.
