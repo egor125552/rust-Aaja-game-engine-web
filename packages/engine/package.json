@@ -1,15 +1,44 @@
 {
   "name": "@aaja/audio-game-engine",
   "version": "0.1.0",
-  "description": "Accessible Rust/WASM and Web Audio engine for browser audio games",
+  "description": "Accessible ESM-only Rust/WebAssembly and Web Audio engine for browser audio games",
   "type": "module",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "sideEffects": false,
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/egor125552/rust-Aaja-game-engine-web.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://egor125552.github.io/rust-Aaja-game-engine-web/",
+  "bugs": {
+    "url": "https://github.com/egor125552/rust-Aaja-game-engine-web/issues"
+  },
+  "keywords": [
+    "audio-game",
+    "accessibility",
+    "web-audio",
+    "webassembly",
+    "rust",
+    "hrtf",
+    "spatial-audio"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }
