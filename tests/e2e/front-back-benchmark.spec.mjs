@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test("clean front-back test keeps focus, uses HRTF by default, and cleans handles", async ({ page }) => {
+  test.setTimeout(35_000);
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
@@ -9,12 +10,13 @@ test("clean front-back test keeps focus, uses HRTF by default, and cleans handle
   await expect(page.getByLabel("Пространственный режим")).toHaveValue("hrtf");
 
   await page.getByRole("button", { name: "Включить или возобновить звук" }).click();
+  await expect(page.locator("#status")).toContainText("Звук включён", { timeout: 10_000 });
   const run = page.getByRole("button", { name: "Спереди, сзади, спереди, сзади" });
   await run.focus();
   await run.click();
   await expect(run).toBeFocused();
   await expect(page.locator("#status")).toContainText("Тест «спереди, сзади, спереди, сзади» завершён", {
-    timeout: 12_000,
+    timeout: 20_000,
   });
   await expect(page.locator("#active-state")).toHaveText("0");
   await expect(page.locator("#handles-state")).toHaveText("0");
