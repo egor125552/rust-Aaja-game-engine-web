@@ -31,6 +31,7 @@ try {
   });
   await page.goto("http://127.0.0.1:4173/benchmark.html", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Включить или возобновить звук" }).click();
+  await page.getByLabel("Общий voice limit движка, от 1 до 128").fill("32");
   await page.getByLabel("Количество последовательных циклов создания и очистки").fill("5");
   await page.getByRole("button", { name: "Матрица: 8, 16, 32, 64 и 128" }).click();
   await page.locator("#status").filter({ hasText: "Benchmark завершён" }).waitFor({ timeout: 180_000 });
@@ -39,6 +40,10 @@ try {
   if (errors.length > 0) throw new Error(`Browser errors: ${errors.join(" | ")}`);
   if (report.results.some((result) => !result.cleanupPassed)) {
     throw new Error("At least one full benchmark cleanup cycle failed");
+  }
+  const limitedResults = report.results.filter((result) => result.count > report.voiceLimit);
+  if (limitedResults.length === 0 || limitedResults.some((result) => result.evicted === 0)) {
+    throw new Error("Full benchmark did not exercise total voice eviction above the configured limit");
   }
   await writeFile(path.join(outputDirectory, "benchmark.json"), JSON.stringify(report, null, 2));
   await writeFile(path.join(outputDirectory, "benchmark.txt"), await page.locator("#report-text").textContent() ?? "");
