@@ -1,8 +1,7 @@
 name: Verify live real audio listening lab
 
 on:
-  push:
-    branches: ["main"]
+  pull_request:
   workflow_dispatch:
 
 permissions:
