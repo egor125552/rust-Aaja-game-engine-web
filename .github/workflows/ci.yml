@@ -19,7 +19,7 @@ env:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -99,14 +99,22 @@ jobs:
           test -s packages/engine/dist/wasm/audio_game_core_bg.wasm
           test -s packages/engine/dist/wasm/audio_game_core.js
           test -s demo/dist/engine/wasm/audio_game_core_bg.wasm
+          test -s demo/dist/front-back.html
+          test -s demo/dist/benchmark.html
           npm run test:wasm
           echo "WASM bytes: $(wc -c < packages/engine/dist/wasm/audio_game_core_bg.wasm)"
           echo "Engine package bytes: $(du -sb packages/engine/dist | cut -f1)"
 
+      - name: Pack and install the npm tarball in a clean consumer
+        run: npm run test:package
+
       - name: Install browser runtimes
         run: npx playwright install --with-deps chromium firefox webkit
 
-      - name: Browser smoke tests
+      - name: Run installed-package browser smoke
+        run: npm run test:consumer-browser
+
+      - name: Browser and benchmark smoke tests
         run: npm run test:e2e
 
       - name: Require committed Rust formatting
@@ -122,7 +130,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: aaja-audio-demo-${{ github.run_attempt }}
+          name: aaja-audio-release-readiness-${{ github.run_attempt }}
           path: |
             test.log
             test.status
@@ -130,6 +138,9 @@ jobs:
             build.status
             demo/dist
             packages/engine/dist
+            artifacts/package
+            artifacts/consumer-smoke/browser-smoke.json
+            artifacts/consumer-smoke/dist
             playwright-report
             test-results
             rustfmt.patch
