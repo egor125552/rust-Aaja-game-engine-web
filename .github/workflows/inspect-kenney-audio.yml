@@ -17,6 +17,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install audio tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+
       - name: Download CC0 Kenney audio packs
         shell: bash
         run: |
@@ -31,29 +40,28 @@ jobs:
           unzip -q rpg.zip -d candidates/rpg
           unzip -q impact.zip -d candidates/impact
 
-      - name: Convert exact candidates to iPhone-safe WAV
+      - name: Convert doors and wooden footsteps to iPhone-safe WAV
         shell: bash
         run: |
           set -euo pipefail
-          command -v ffmpeg
-          command -v ffprobe
-          mkdir -p selected/door selected/steps selected/impact
+          mkdir -p selected/door selected/steps
 
-          for source in candidates/rpg/Audio/doorClose_{1,2,3,4}.ogg; do
-            name="$(basename "${source%.ogg}")"
-            ffmpeg -v error -y -i "$source" -ac 1 -ar 48000 -c:a pcm_s16le "selected/door/${name}.wav"
-          done
+          find candidates/rpg/Audio -maxdepth 1 -type f -name 'doorClose_*.ogg' -print0 \
+            | sort -z \
+            | while IFS= read -r -d '' source; do
+                name="$(basename "${source%.ogg}")"
+                ffmpeg -v error -y -i "$source" -ac 1 -ar 48000 -c:a pcm_s16le "selected/door/${name}.wav"
+              done
 
-          for source in candidates/impact/Audio/footstep_wood_{000,001,002,003,004}.ogg; do
-            name="$(basename "${source%.ogg}")"
-            ffmpeg -v error -y -i "$source" -ac 1 -ar 48000 -c:a pcm_s16le "selected/steps/${name}.wav"
-          done
+          find candidates/impact/Audio -maxdepth 1 -type f -name 'footstep_wood_*.ogg' -print0 \
+            | sort -z \
+            | while IFS= read -r -d '' source; do
+                name="$(basename "${source%.ogg}")"
+                ffmpeg -v error -y -i "$source" -ac 1 -ar 48000 -c:a pcm_s16le "selected/steps/${name}.wav"
+              done
 
-          for source in candidates/impact/Audio/impactWood_{heavy_000,heavy_004,medium_002,medium_004}.ogg; do
-            name="$(basename "${source%.ogg}")"
-            ffmpeg -v error -y -i "$source" -ac 1 -ar 48000 -c:a pcm_s16le "selected/impact/${name}.wav"
-          done
-
+          test "$(find selected/door -type f -name '*.wav' | wc -l)" -eq 4
+          test "$(find selected/steps -type f -name '*.wav' | wc -l)" -eq 5
           cp candidates/rpg/License.txt selected/KENNEY_RPG_AUDIO_LICENSE.txt
           cp candidates/impact/License.txt selected/KENNEY_IMPACT_SOUNDS_LICENSE.txt
 
