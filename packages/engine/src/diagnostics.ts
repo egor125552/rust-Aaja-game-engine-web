@@ -8,7 +8,7 @@ export class Diagnostics extends EventTarget {
   #warningCount = 0;
   #errorCount = 0;
 
-  constructor(limit = 4_096) {
+  constructor(limit = 200) {
     super();
     this.#limit = limit;
   }
