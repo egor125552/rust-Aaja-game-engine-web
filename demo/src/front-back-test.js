@@ -159,20 +159,26 @@ async function runCircle(expectedGeneration) {
 
 async function runQualityComparison(expectedGeneration) {
   const original = qualitySelect.value;
-  for (const quality of ["hrtf", "equal-power"]) {
-    qualitySelect.value = quality;
-    const audio = await requireEngine();
-    audio.setQuality(quality);
-    byId("settings-summary").textContent = quality === "hrtf"
+  try {
+    for (const quality of ["hrtf", "equal-power"]) {
+      qualitySelect.value = quality;
+      const audio = await requireEngine();
+      audio.setQuality(quality);
+      byId("settings-summary").textContent = quality === "hrtf"
+        ? "Сухая сцена, HRTF, 4 метра, одинаковая громкость."
+        : "Сухая сцена, equal-power, 4 метра, одинаковая громкость.";
+      announce(`${quality === "hrtf" ? "HRTF" : "Equal-power"}: сейчас прозвучат спереди и сзади.`);
+      if (!await playAngle(0, `${quality}: спереди`, expectedGeneration)) return;
+      if (!await playAngle(180, `${quality}: сзади`, expectedGeneration)) return;
+    }
+  } finally {
+    qualitySelect.value = original;
+    if (engine) engine.setQuality(original);
+    byId("settings-summary").textContent = original === "hrtf"
       ? "Сухая сцена, HRTF, 4 метра, одинаковая громкость."
       : "Сухая сцена, equal-power, 4 метра, одинаковая громкость.";
-    announce(`${quality === "hrtf" ? "HRTF" : "Equal-power"}: сейчас прозвучат спереди и сзади.`);
-    if (!await playAngle(0, `${quality}: спереди`, expectedGeneration)) return;
-    if (!await playAngle(180, `${quality}: сзади`, expectedGeneration)) return;
+    refreshState();
   }
-  qualitySelect.value = original;
-  if (engine) engine.setQuality(original);
-  refreshState();
 }
 
 enableButton.addEventListener("click", () => {
