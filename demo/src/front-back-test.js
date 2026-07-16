@@ -19,6 +19,7 @@ const step = byId("step");
 const result = byId("result");
 
 let engine;
+let enginePromise;
 let generation = 0;
 let lastRun;
 let lastRunName = "";
@@ -54,28 +55,33 @@ function refreshState() {
 }
 
 async function requireEngine() {
-  if (!engine) {
-    engine = await AudioGameEngine.start({
+  if (!enginePromise) {
+    enginePromise = AudioGameEngine.start({
       quality: qualitySelect.value,
       maxVoices: 8,
       autoRecover: true,
+    }).then((audio) => {
+      engine = audio;
+      audio.setListenerPosition([0, 0, 0], 0);
+      audio.setListenerOrientation([0, 0, -1], [0, 1, 0], 0);
+      audio.addEventListener("sourcestart", refreshState);
+      audio.addEventListener("sourcestop", refreshState);
+      audio.addEventListener("statechange", refreshState);
+      return audio;
+    }).catch((error) => {
+      enginePromise = undefined;
+      throw error;
     });
-    engine.setListenerPosition([0, 0, 0], 0);
-    engine.setListenerOrientation([0, 0, -1], [0, 1, 0], 0);
-    engine.setRoom("dry", 0);
-    engine.room.setReverbAmount(0, 0);
-    engine.addEventListener("sourcestart", refreshState);
-    engine.addEventListener("sourcestop", refreshState);
-    engine.addEventListener("statechange", refreshState);
-  } else {
-    await engine.resume();
   }
-  engine.setQuality(qualitySelect.value);
-  engine.setRoom("dry", 0);
-  engine.room.setReverbAmount(0, 0);
+
+  const audio = await enginePromise;
+  await audio.resume();
+  audio.setQuality(qualitySelect.value);
+  audio.setRoom("dry", 0);
+  audio.room.setReverbAmount(0, 0);
   enableButton.textContent = "Возобновить звук";
   refreshState();
-  return engine;
+  return audio;
 }
 
 async function disposeLiveSources(fadeMs = 0) {
@@ -97,6 +103,7 @@ async function stopTest(announceStop = true) {
 async function playAngle(degrees, label, expectedGeneration) {
   if (generation !== expectedGeneration) return false;
   const audio = await requireEngine();
+  if (generation !== expectedGeneration) return false;
   const source = await audio.play(DOOR_URL, {
     position: positionForAngle(degrees),
     category: "danger",
@@ -182,8 +189,13 @@ async function runQualityComparison(expectedGeneration) {
 }
 
 enableButton.addEventListener("click", () => {
+  const requestGeneration = generation;
   void requireEngine()
-    .then(() => announce("Звук включён. Можно запускать чистые последовательности."))
+    .then(() => {
+      if (generation === requestGeneration) {
+        announce("Звук включён. Можно запускать чистые последовательности.");
+      }
+    })
     .catch(reportError);
 });
 
