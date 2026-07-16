@@ -1,4 +1,4 @@
-name: Inspect Kenney real-world audio candidates
+name: Export Kenney real-world audio references
 
 on:
   pull_request:
@@ -10,9 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  inspect:
+  export:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,49 +40,34 @@ jobs:
           unzip -q rpg.zip -d candidates/rpg
           unzip -q impact.zip -d candidates/impact
 
-      - name: Convert doors and wooden footsteps to iPhone-safe WAV
+      - name: Convert one door and one wooden footstep to iPhone-safe WAV
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p selected/door selected/steps
+          mkdir -p selected
+          door="$(find candidates/rpg -type f -name 'doorClose_2.ogg' -print -quit)"
+          step="$(find candidates/impact -type f -name 'footstep_wood_000.ogg' -print -quit)"
+          test -n "$door"
+          test -n "$step"
+          ffmpeg -v error -y -i "$door" -ac 1 -ar 48000 -c:a pcm_s16le selected/door-close.wav
+          ffmpeg -v error -y -i "$step" -ac 1 -ar 48000 -c:a pcm_s16le selected/wood-step.wav
+          cp "$(find candidates/rpg -type f -iname 'License.txt' -print -quit)" selected/KENNEY_RPG_AUDIO_LICENSE.txt
+          cp "$(find candidates/impact -type f -iname 'License.txt' -print -quit)" selected/KENNEY_IMPACT_SOUNDS_LICENSE.txt
 
-          find candidates/rpg/Audio -maxdepth 1 -type f -name 'doorClose_*.ogg' -print0 \
-            | sort -z \
-            | while IFS= read -r -d '' source; do
-                name="$(basename "${source%.ogg}")"
-                ffmpeg -v error -y -i "$source" -ac 1 -ar 48000 -c:a pcm_s16le "selected/door/${name}.wav"
-              done
-
-          find candidates/impact/Audio -maxdepth 1 -type f -name 'footstep_wood_*.ogg' -print0 \
-            | sort -z \
-            | while IFS= read -r -d '' source; do
-                name="$(basename "${source%.ogg}")"
-                ffmpeg -v error -y -i "$source" -ac 1 -ar 48000 -c:a pcm_s16le "selected/steps/${name}.wav"
-              done
-
-          test "$(find selected/door -type f -name '*.wav' | wc -l)" -eq 4
-          test "$(find selected/steps -type f -name '*.wav' | wc -l)" -eq 5
-          cp candidates/rpg/License.txt selected/KENNEY_RPG_AUDIO_LICENSE.txt
-          cp candidates/impact/License.txt selected/KENNEY_IMPACT_SOUNDS_LICENSE.txt
-
-      - name: Record duration, loudness and peak
+      - name: Validate exported audio
         shell: bash
         run: |
           set -euo pipefail
-          {
-            echo -e "duration_seconds\tpeak_db\tmean_volume_db\tfile"
-            while IFS= read -r file; do
-              duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$file")"
-              stats="$(ffmpeg -hide_banner -i "$file" -af volumedetect -f null - 2>&1)"
-              peak="$(sed -n 's/.*max_volume: \([^ ]*\) dB.*/\1/p' <<<"$stats" | tail -n 1)"
-              mean="$(sed -n 's/.*mean_volume: \([^ ]*\) dB.*/\1/p' <<<"$stats" | tail -n 1)"
-              printf '%s\t%s\t%s\t%s\n' "$duration" "$peak" "$mean" "$file"
-            done < <(find selected -type f -name '*.wav' | sort)
-          } | tee selected/manifest.tsv
+          for file in selected/door-close.wav selected/wood-step.wav; do
+            test "$(head -c 4 "$file")" = "RIFF"
+            duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$file")"
+            test -n "$duration"
+            echo "$file duration=$duration"
+          done
 
-      - name: Upload exact candidates
+      - name: Upload reference sounds
         uses: actions/upload-artifact@v4
         with:
-          name: kenney-real-audio-candidates
+          name: kenney-real-audio-references
           path: selected
           if-no-files-found: error
